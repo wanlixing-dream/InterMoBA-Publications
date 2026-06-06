@@ -1,0 +1,505 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{balance}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\usepackage[hidelinks]{hyperref}
+\bibliographystyle{IEEEtran} 
+\begin{document}
+
+\title{Interaction-aware Transformer with Mixture of Block Attention for protein-ligand docking and affinity prediction\\
+{\footnotesize }
+}
+
+\maketitle
+
+\begin{abstract}
+In the field of biomedicine, accurately predicting the binding sites of proteins and small molecules and assessing their affinity is crucial for accelerating drug discovery. While traditional experimental methods are accurate, they are time-consuming and costly. Virtual screening, though efficient and low-cost, struggles with structural flexibility, conformational changes, and dynamic adaptation, hindering the balance of long-range interaction modeling, physical plausibility, and computational efficiency. To address these issues, we propose interaction-aware transformer with mixture of block attention for protein-ligand docking and affinity prediction(InterMoBA) to capture complex intramolecular and intermolecular interactions through a hierarchical architecture. Empirical results demonstrate that InterMoBA can improve accuracy and significantly accelerate the computational rate in protein-ligand docking tasks, achieving a balance between accuracy and efficiency, and is expected to provide efficient support for new drug development. In the future, InterMoBA can be extended to more molecular interaction prediction scenarios, contributing to biomedical research.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Protein-Ligand Docking, Affinity Prediction, Mixture of Block Attention (MoBA), Interaction Recovery
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{W}{ithin} the domain of drug discovery, predicting protein-ligand interactions constitutes a core task fundamental to modern pharmaceutical development\cite{wang2000calculating} and bioengineering. The accurate identification of protein binding sites for small molecules is a critical step within this process, holding paramount importance for accelerating the screening and optimization of candidate drug compounds. While traditional experimental methods  such as X-ray crystallography\cite{ladd1977structure} and nuclear magnetic resonance\cite{wuthrich1990protein}, offer precision, they are inherently time-consuming, costly, and poorly suited for large-scale screening demands. Although computational virtual screening\cite{dhakal2022artificial} techniques have progressively emerged, existing predictive models continue to face fundamental challenges\cite{wang2024prediction}\cite{harren2024modern}: they struggle to concurrently model protein conformational flexibility, ligand rotational degrees of freedom\cite{lakowicz1983rotational}, and the dynamic adaptation process, particularly lacking explicit awareness of non-covalent interactions\cite{hobza2010non} such as hydrogen bonding and hydrophobic effects; insufficient fusion of long-range residue interactions\cite{tsuboyama2023mega} with local features leads to prediction bias; and the high computational overhead of global attention mechanisms impedes large-scale applications, exemplified by processing times of 29.1 seconds per sample for Interformer\cite{lai2024interformer}. These intertwined factors constitute significant theoretical bottlenecks for achieving high-precision, high-efficiency prediction, urgently necessitating novel frameworks that reconcile physical plausibility\cite{morris2021using} with computational efficiency\cite{lu2025moba}.
+
+To overcome these limitations, this paper introduces the interaction-aware transformer with mixture of block attention model (InterMoBA). This framework integrates physical priors with computational efficiency through a hierarchical architectural design\cite{paszke2019pytorch}: a base encoder processes atomic coordinates and chemical features\cite{xu2024surface}; an interaction encoder employs masked self-attention\cite{lee2018pre} to disentangle intramolecular and intermolecular forces; the core Mixture of Block Attention (MoBA) adapter introduces chunk processing and a Top-K\cite{lin2022survey} sparse attention mechanism, dynamically focusing on key atomic regions. Concurrently, the model embeds physically meaningful rules such as atomic collision detection and minimum distance constraints. Computationally, dynamic batching\cite{paszke2019pytorch} and mixed-precision training\cite{micikevicius2017mixed} are leveraged to significantly enhance efficiency. This design directly addresses the imbalance between physical effect modeling and computational cost prevalent in existing methods, offering a novel paradigm for real-world drug screening scenarios.
+
+Experimental validation on the time-split PDBBind\cite{corso2022diffdock} test set demonstrates the significant advantages of InterMoBA. In the specified binding pocket residue scenario\cite{jain2024deep}, its Top-1 docking success rate (RMSD $<$ 2 \AA) reaches 65.5\%, surpassing mainstream methods like Interformer (63.9\%)\cite{lai2024interformer}, while maintaining an average processing time of 23.1 seconds per sample, using the same GPU configuration (NVIDIA 3060) as Interformer. Crucially, its recovery rates for key molecular interactions (hydrogen bonds: 63.74\%; hydrophobic interactions: 54.69\%) exceed those of the current best models by over 13\%, highlighting its precise capture of underlying physical interaction mechanisms. This model successfully balances accuracy with computational efficiency, providing a more practical solution for large-scale virtual screening. 
+
+\section{Results}
+
+\subsection{InterMoBA Model}
+
+InterMoBA is a deep learning framework specifically designed for protein-ligand docking and binding affinity prediction, with a particular emphasis on energy-based evaluation. The architecture draws inspiration from Graph-Transformer\cite{vaswani2017attention} \cite{yun2019graph} models and incorporates the mixture of block attention (MoBA)\cite{bishop1994mixture} module, which directly predicts binding energies and utilizes them as the final affinity score. The source code, datasets, complete experimental setup and configurations are publicly available at \href{https://anonymous.4open.science/r/InterMoBA-8F21}{https://anonymous.4open.science/r/InterMoBA-8F21}.
+The model takes as input the three-dimensional conformations of individual ligands and protein binding pockets, derived from either crystallographic structures or molecular docking results. Employing a pocket-docking strategy (Figure~\ref{fig:wide-figure}(a)), the spatial orientation of the ligand within the protein binding pocket is first determined based on protein-ligand docking or known complex structures. Both the ligand and the protein binding pocket are represented as graphs\cite{stark2022equibind}, where each node corresponds to an atom characterized by its pharmacophoric type, and each edge denotes spatial proximity, with the edge feature being the Euclidean distance between atom pairs. This graph-based\cite{scarselli2008graph} representation effectively captures key intermolecular interactions such as hydrogen bonding and hydrophobic effects, thereby providing the model with rich chemical context.
+
+In the second stage (Figure~\ref{fig:wide-figure}(b,c)), the node and edge features of the protein and ligand are processed through Intra-Blocks and Inter-Blocks. Intra-Blocks model intramolecular interactions and update atomic features, while Inter-Blocks capture interactions between protein and ligand atoms. The resulting features are then fed into the MoBA module.
+MoBA, the core component of InterMoBA, predicts the parameters of multiple Gaussian functions for each protein-ligand atom pair, with each Gaussian corresponding to a specific type of interaction (e.g., general, hydrophobic, and hydrogen bond). By integrating these Gaussians, a Mixture Density Function (MDF) is formed, representing the conditional probability density of interatomic distances. This MDF serves as an energy function, estimating both the probability distribution and the strength of atomic interactions.
+
+The final energy score is obtained by aggregating the MDFs of all protein-ligand atom pairs, which serves as the ultimate scoring function. A Monte Carlo (MC)\cite{metropolis1953equation} sampling approach is employed to generate Top-K candidate ligand conformations by minimizing the energy function. Ligands are initially placed at various positions and orientations within the binding site, with random torsion angles assigned. The MC algorithm searches for the lowest-energy conformations, which are considered the most probable binding poses.
+
+By leveraging graph-based molecular representations and a dedicated MoBA energy module, InterMoBA directly predicts binding energies and uses them as affinity scores. This approach ensures the model's sensitivity to critical molecular interactions and enables efficient generation and evaluation of docking poses, obviating the need for a separate affinity prediction network.
+
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig1.png}  % ← 占全图
+    \caption{\small % 实现 font=small 的需求，嵌套在caption内，符合IEEE规范
+    \textbf{Overview of InterMoBA architecture.} % 标题加粗，保持你的原有格式
+    \textbf{a} The binding pocket (green) and ligand (blue) are illustrated in the main panel, while the inset provides an enlarged view of the ligand's conformational fit within the pocket.  
+    \textbf{b} Binding pockets and ligands are extracted from structures, encoded into SDF/UFF descriptors, collated by a Data Collator, embedded, and passed through Multi-Head Attention and a linear layer\cite{ba2016layer} to yield final feature representations.  
+    \textbf{c} Chunk and Top-K attention partition V, Q, and K; a Top-K gate selects salient information, and a variable-length sparse attention module jointly refines features to output binding predictions.
+}
+    \label{fig:wide-figure}
+\end{figure*}
+
+\subsection{Performance of Protein-Ligand Docking Accuracy}
+We conducted a comprehensive evaluation of several state-of-the-art methods on the protein-ligand docking task, utilizing the temporally split PDBBind test set\cite{corso2022diffdock}. The primary metric was the success rate of docking poses with an RMSD less than 2 \AA. Two principal scenarios were considered: (1) blind docking, where the entire protein structure is provided as input; and (2) pocket residue specification, where residues proximal to a reference ligand are selected based on a distance threshold.
+
+As summarized in the Table~\ref{tab:model_comparison}, under the blind docking scenario, traditional approaches such as GNINA\cite{mcnutt2021gnina}, SMINA\cite{koes2013lessons}, TANKBind\cite{lu2022tankbind}, and DiffDock\cite{corso2022diffdock} achieved Top-1 success rates of 22.9\%, 18.7\%, 20.4\%, and 38.2\%, respectively. In contrast, for the pocket residue specification scenario, AutoDock Vina\cite{trott2010autodock}, GNINA, and Interformer\cite{lai2024interformer} attained Top-1\cite{jain2024deep} success rates of 44.6\%, 53.3\%, and 63.9\%, respectively. Notably, the InterMoBA method demonstrated the most outstanding performance in this setting, achieving a Top-1 success rate of 65.5\% and a Top-5 success rate of 78.4\%, both substantially surpassing previous methods. Furthermore, InterMoBA also exhibited superior computational efficiency, with an average runtime of 23.1 seconds. For comparison, when run on the same hardware configuration (Nvidia 3060 GPU), Interformer had an average runtime of 29.1 seconds. This indicates that InterMoBA not only outperforms Interformer in terms of accuracy but also has better computational efficiency.
+
+Collectively, these results indicate that the proposed method not only outperforms existing mainstream approaches in terms of accuracy and efficiency but also holds significant promise for practical applications in protein-ligand docking.Furthermore, InterMoBA also exhibited superior computational efficiency, with an average runtime of 23.1 seconds.
+
+\begin{table}[!t]
+\centering
+\scriptsize
+\caption{
+\textbf{Time-based PDBBind docking accuracy benchmark (n = 333).}  
+}
+\label{tab:model_comparison}
+\renewcommand{\arraystretch}{1.1}
+\setlength{\arrayrulewidth}{0.3pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{Models}} & 
+\multicolumn{2}{c}{\textbf{Top-1 RMSD}} & 
+\multicolumn{2}{c}{\textbf{Top-5 RMSD}} & 
+\multirow{2}{*}{\textbf{Runtime (s)\textsuperscript{↓}}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+& \textbf{\% $<$ 2~\AA\textsuperscript{↑}} & \textbf{Median\textsuperscript{↓}} & \textbf{\% $<$ 2~\AA\textsuperscript{↑}} & \textbf{Median\textsuperscript{↓}} & \\
+\specialrule{0.3pt}{0pt}{0pt}
+\multicolumn{6}{c}{\textbf{Blind docking}} \\
+\specialrule{0.3pt}{0pt}{0pt}
+GNINA\cite{mcnutt2021gnina} & 22.9 & 7.7 & 32.9 & 4.5 & 127 \\
+\specialrule{0.3pt}{0pt}{0pt}
+SMINA\cite{koes2013lessons} & 18.7 & 7.1 & 29.3 & 4.6 & 126 \\
+\specialrule{0.3pt}{0pt}{0pt}
+TANKBind\cite{lu2022tankbind} & 20.4 & 4.0 & 24.5 & 3.4 & \textbf{2.5} \\
+\specialrule{0.3pt}{0pt}{0pt}
+DiffDock\cite{corso2022diffdock} & 38.2 & 3.3 & 44.7 & 2.4 & 40 \\
+\specialrule{0.3pt}{0pt}{0pt}
+\multicolumn{6}{c}{\textbf{Pocket residues specified}} \\
+\specialrule{0.3pt}{0pt}{0pt}
+AutoDock Vina\cite{trott2010autodock} & 44.6 & 2.72 & 62.6 & 1.42 & 41.2 \\
+\specialrule{0.3pt}{0pt}{0pt}
+GNINA\cite{mcnutt2021gnina} & 53.3 & 1.79 & 68.8 & 1.27 & 194.2 \\
+\specialrule{0.3pt}{0pt}{0pt}
+DeepDock\cite{liao2019deepdock} & 18.8 & 4.80 & - & - & 64.3 \\
+\specialrule{0.3pt}{0pt}{0pt}
+Interformer\cite{lai2024interformer} & 63.9 & \textbf{1.25} & 78.0 & 1.02 & 29.1 \\
+\specialrule{0.3pt}{0pt}{0pt}
+\textbf{InterMoBA} & \textbf{65.5} & 1.33 & \textbf{78.4} & \textbf{0.99} & 23.1 \\
+\bottomrule
+% ---------- 表格内容 ----------
+\end{tabular}}
+\bigskip
+
+{\small\raggedright   % ← 只加这一行
+Table~1 shows the percentage of predictions with RMSD less than 2~\AA, the median RMSD, and the average runtime per method. 
+Energy indicates sampling docking poses using the energy model.  
+The performance results of GNINA (blind docking), SMINA, TANKBind, and DiffDock are taken from the DiffDock paper\cite{corso2022diffdock}.  
+The results of AutoDock Vina, GNINA (pocket residues specified), and Interformer are from the Interformer paper\cite{lai2024interformer}.  
+Bold numbers indicate the best performance for each metric.\par}
+\end{table}
+
+\subsection{Quantitative Analysis of Molecular Interaction Recovery Capability}
+In molecular docking tasks, conventional deep learning approaches typically focus on minimizing the RMSD between the docked and crystallographic ligand conformations. However, while these methods may yield spatially accurate poses, they often overlook the underlying physical non-covalent interactions. To address this limitation, we systematically evaluated the recovery of hydrogen bonds and hydrophobic interactions\cite{nemethy1967hydrophobic} using the PLIP (Protein-Ligand Interaction Profiler)\cite{salentin2015plip} tool, comprehensively comparing the performance of DiffDock\cite{corso2022diffdock}, DeepDock\cite{liao2019deepdock}, Interformer\cite{lai2024interformer}, and InterMoBA on the PDBBind\cite{wang2005pdbbind} time-split test set. Statistical results indicate that DiffDock and DeepDock achieve hydrogen bond recovery rates of 30.55\% and 21.45\%, and hydrophobic interaction recovery rates\cite{buttenschoen2024posebusters} of 19.33\% and 15.50\%, respectively (Figure~\ref{fig:performance}(a,b)). In contrast, the Interformer method improves the average recovery rates to 50.22\% for hydrogen bonds and 38.51\% for hydrophobic interactions. Most notably, InterMoBA attains average recovery rates of 63.74\% for hydrogen bonds and 54.69\% for hydrophobic interactions, significantly outperforming the other methods. These findings demonstrate that InterMoBA not only effectively captures the physical interactions between molecules but also exhibits superior generalizability and accuracy in molecular recognition.
+
+\subsection{Correlation Between Conformation Ranking and Spatial Accuracy}
+Further analysis reveals that the conformation ranking scores produced by the InterMoBA model are highly indicative of the spatial accuracy of predicted poses. Specifically, as the pose rank increases, the median RMSD of the predicted conformations rises progressively, from 1.0 \AA for the top-ranked pose to 6.0 \AA at rank 19 (Figure~\ref{fig:performance}(c)). This trend indicates that the model reliably prioritizes the most accurate conformations, thereby enhancing the reliability of docking outcomes. Violin plot statistics further corroborate this (Figure~\ref{fig:performance}(d)), showing that the median RMSD for top-ranked poses (1.02 \AA) is substantially lower than that of other ranks (4.40 \AA), with the majority of top-1 poses falling below the success threshold. This provides strong evidence for the effectiveness of the model's ranking mechanism.
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig2.png} % 请确保文件名/路径正确
+    \caption{
+        \textbf{Performance evaluation of InterMoBA in molecular-interaction recovery and conformation prediction.}
+        \textbf{a} Histogram of interaction-recovery rates across different bins (0-20\%, 20-40\%, 40-60\%, 60-80\%, 80-100\%).InterMoBA yields the largest number of recovered hydrogen-bond and hydrophobic interactions in the 80-100\% bin, markedly surpassing DiffDock\cite{corso2022diffdock}, DeepDock\cite{liao2019deepdock} and Interformer\cite{lai2024interformer}.
+        \textbf{b} Line plot comparing the average recovery rates for hydrogen-bond and hydrophobic interactions. InterMoBA outperforms all baseline methods on both interaction types, demonstrating superior molecular-recognition capability.
+        \textbf{c} Bar chart showing that as the conformation rank increases from 0 to 19, the median RMSD rises progressively (1.0 \AA to 6.0 \AA), indicating that the model's ranking score reliably reflects pose accuracy.
+        \textbf{d} Violin plot of RMSD distributions for Top-Rank (rank 0) versus other ranks (1-19). Top-Rank poses have a median RMSD of 1.02 \AA, significantly lower than 4.40 \AA for the rest, and most lie below the success threshold, confirming that the optimal pose is correctly placed at the top.
+        \textbf{e} Predicted ligand pose(PDB ID: 6ggb) overlaid with the crystallographic pose, with hydrophobic contacts highlighted. Inset shows the spatial fit within the binding pocket (RMSD = 0.492 \AA).
+        \textbf{f} Predicted ligand pose(PDB ID: 3g2n) overlaid with the crystallographic pose, with hydrogen-bond interactions annotated. Inset details the donor-acceptor pairs (RMSD = 0.332 \AA). The top-right graph displays the predicted five MDN distributions, where the x-axis is the van der Waals radius distance d of the atom pairs and the y-axis is the probability of the MDN. The color coding is as follows: yellow, green and red for hydrogen bond pairs; purple and blue for other non-interacting pairs.
+    }
+    \label{fig:performance}
+\end{figure*}
+
+
+
+
+\subsection{Visualization of Binding Modes and Analysis of Physical Plausibility}
+
+Case studies further illustrate that InterMoBA not only accurately predicts protein-ligand binding modes but also faithfully recapitulates key hydrogen bonds and hydrophobic interactions. For instance, in the case of PDB ID: 6ggb (Figure~\ref{fig:performance}(e)), the predicted binding pose closely matches the actual ligand (RMSD = 0.492), with precise identification of hydrophobic contacts between ligand and pocket atoms. Similarly, for PDB ID: 3g2n (Figure~\ref{fig:performance}(f)), the model accurately captures hydrogen bonding interactions between ligand atoms and protein residues (RMSD = 0.332), further validating the model's high-fidelity predictions at the physical interaction level.
+
+\subsection{Mechanistic Insights and Advantages of the Model}
+The core strength of the InterMoBA approach lies in its deep modeling of intermolecular physical interactions. By physical constraints, the model not only optimizes spatial conformation prediction but also markedly enhances the recovery of specific interactions such as hydrogen bonds and hydrophobic contacts. Compared to traditional methods, InterMoBA achieves a more balanced trade-off between spatial accuracy and physical plausibility, resulting in docked poses that excel in RMSD metrics while also being highly relevant for practical drug design. Notably, the model's performance in the high recovery rate range (80-100\%) is particularly impressive (Figure~\ref{fig:performance}(a)), underscoring its robust generalization capability even in demanding scenarios.
+
+\subsection{Dynamic Attention Mechanism Design in the MoBA Module}
+The MoBA module is seamlessly integrated into each layer of the model as a plug-in, positioned after both intra-encoders and inter-encoders. Its core innovation lies in the dynamic partitioning and key node selection, achieved through the ChunkStrategy (Figure~\ref{fig:chunk_topk}(a)) and TopKStrategy (Figure~\ref{fig:chunk_topk}(b)). Specifically, ChunkStrategy adaptively determines the chunk size based on node and edge features, allowing the attention's local scope to flexibly adjust according to structural complexity. Meanwhile, TopKStrategy dynamically selects the Top-K critical nodes by integrating multi-dimensional scores such as node importance, contact frequency, and centrality. This significantly enhances the attention mechanism's focus on salient structures, effectively mitigating the dilution problem\cite{peng2024limitations} of global attention and enabling the model to efficiently capture key structural information.
+
+\begin{figure*}[!t]
+  \centering
+   \includegraphics[width=0.9\textwidth]{fig3.png} % 请确保文件名/路径正确
+  \caption{
+    \textbf{Feature-fusion-based chunk and Top-K strategy.} \\
+    \textbf{a} Chunk strategy. Node and edge features are extracted separately, fused via a learnable projection, and used to compute per-residue importance scores. Chunk boundaries are then adjusted dynamically according to these scores and spatial proximity, while respecting a maximum sequence-length limit, enabling efficient and context-aware processing. \\
+    \textbf{b} Top-K strategy. Multiple signals (feature encoding, inter-node distances, and contact frequency) are fused to yield a normalized importance score for each node. The Top-K highest-scoring nodes are retained for downstream analysis and modeling, substantially improving computational efficiency and predictive accuracy.
+   }
+   \label{fig:chunk_topk}
+\end{figure*}
+
+\subsection{Feature Normalization and Fusion Strategy}
+Following the output of the MoBA module, node and edge features are individually normalized using LayerNorm\cite{ba2016layer}, then concatenated with backbone features and fused via a multi-layer perceptron (MLP). This fusion approach not only preserves the high-quality features extracted by MoBA but also achieves effective information integration and noise suppression through residual connections\cite{he2016deep} and gating mechanisms\cite{graves2012long}. The normalization step further standardizes feature distributions, preventing feature explosion and gradient vanishing, thereby providing a stable foundation for subsequent feature representations.
+
+\subsection{Soft Bias and Enhanced Regularization}
+The MoBA module incorporates a learnable soft adjustment mechanism to modulate node scores through temperature scaling and bias correction. In practice, after normalization, node scores are adaptively integrated into the attention bias matrix via this mechanism, enabling dynamic refinement of the attention distribution. This approach not only enhances the model's focus on critical nodes, but also leverages regularization to suppress outliers, thereby improving robustness and generalization. Additionally, a dedicated regularization interface is designed to constrain the adjustment mechanism, effectively mitigating the risk of overfitting.
+
+\subsection{Hierarchical Feature Representation and Progressive Optimization}
+By embedding the MoBA module into each layer of the intra-encoders and inter-encoders, the model achieves progressive optimization of feature representations. Shallow MoBA modules primarily focus on fine-grained modeling of local structures, while deeper modules progressively aggregate global information, enhancing the abstraction capability of features. As illustrated by the t-SNE visualization (Figure~\ref{fig:moba_feats}(c)), node feature distributions become increasingly clustered with greater depth, reflecting the hierarchical optimization of feature space structure by MoBA. This multi-level feature aggregation mechanism facilitates the capture of multi-scale structural information, thereby improving the model's capacity to represent complex relationships.
+
+\subsection{Improvement in Node Feature Distribution and Clustering}
+The introduction of the MoBA module markedly improves node feature distribution and clustering. The feature distribution histogram (Figure~\ref{fig:moba_feats}(a)) demonstrates that, after MoBA, node features are more concentrated around zero, indicating a more compact distribution. Intra-node t-SNE visualizations (Figure~\ref{fig:moba_feats}(b)) reveal enhanced clustering and clearer class boundaries among nodes of the same type post-MoBA. Inter-node t-SNE results (Figure~\ref{fig:moba_feats}(d)) further show that MoBA optimizes the feature space structure, increasing the separability among nodes of the same type. These improvements stem from MoBA's dynamic selection, normalization-fusion, and regularization mechanisms, which collectively enhance feature discriminability and aggregation, providing a superior foundation for downstream tasks.
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.7\textwidth]{fig4.png} % 请确保文件名/路径正确
+    \caption{%
+        \textbf{Visual analysis of MoBA's impact on node-feature distribution and clustering.} \\
+        \textbf{a} The histogram shows that feature values are widely dispersed before MoBA, but become concentrated around zero after MoBA, indicating effective normalization.
+        \textbf{b} The t-SNE plots of intra-node features at Layer 0 demonstrate that features are scattered before MoBA and form tighter, more discriminative clusters after MoBA.
+        \textbf{c} The t-SNE visualization across Layers 0-5 reveals that intra-node features in shallow layers are scattered, while deeper layers become increasingly compact, reflecting progressive layer-wise aggregation.
+        \textbf{d} The t-SNE plots of inter-node features at Layers 0-2 illustrate that, after MoBA, the feature distributions are more compact and better separated by class, enhancing spatial structure.
+    }
+    \label{fig:moba_feats}
+\end{figure*}
+
+
+\subsection{Insertion Strategies of the MoBA Module in the InterMoBA Model}
+Table~\ref{tab:intermoba_12col} systematically evaluates the impact of different MoBA module insertion strategies within the InterMoBA model on molecular docking energy prediction tasks. Specifically, we investigate the effects of inserting the MoBA module at the first layer, the first two layers, every two layers, every three layers, and at every layer of the model. For each strategy, the model is independently trained and assessed using the PDBBind timesplit benchmark. Evaluation metrics include the proportion of cases with RMSD less than 2~\AA and the median RMSD for Top-1, Top-5, and Top-10 predictions, providing a comprehensive view of model performance under varying precision requirements. This experimental design aims to elucidate the relationship between the frequency of MoBA integration and the model's generalization ability.
+
+The results reveal that the frequency of MoBA insertion exerts a significant influence on model performance. The single-layer insertion strategy (Layer1) achieves the most outstanding results in terms of the proportion of Top-5 and Top-10 predictions with RMSD below 2~\AA, reaching 83.4\% and 85.5\% respectively, which demonstrates strong generalization. This suggests that introducing the MoBA module in the early stages of the model helps capture critical global features while preserving the autonomous learning capacity of subsequent layers, thus avoiding information redundancy and excessive interference. However, as the number of MoBA insertions increases (e.g., Layer1\&2, Layer\%2, Layer\%3), model performance does not continue to improve; in fact, some metrics even decline. The underlying reason is that repeated MoBA insertions reinforce dominant global features at every layer, and the continual concatenation and MLP-based fusion of backbone and MoBA features gradually dilute the independent representational power of the backbone. This leads to homogenized feature representations and a diminished ability to distinguish fine-grained diversity among conformations. Moreover, frequent fusion operations increase model complexity, which may impede gradient flow and further compromise generalization, especially under the timesplit evaluation.
+
+Notably, when the MoBA module is applied at every layer, the model achieves the highest proportion of Top-1 predictions with RMSD below 2~\AA (69.4\%), highlighting a remarkable improvement in recognizing the optimal conformation. This result indicates that frequent MoBA integration greatly enhances the model's capacity to fit the best solution, yielding superior performance under the most stringent evaluation criteria. Nevertheless, the Top-5 and Top-10 metrics are slightly lower than those of the single-layer insertion, further confirming that excessive fusion can undermine the model's ability to distinguish diverse conformations. Specifically, the Top-K mechanism of MoBA inherently emphasizes the most globally significant nodes and interactions, and frequent insertion suppresses the expression of conformational diversity, leading to a slight reduction in generalization. Despite this, the InterMoBA strategy still maintains high performance across most metrics, demonstrating the substantial potential of the MoBA module in enhancing model expressiveness.
+
+In summary, the insertion strategy of the MoBA module plays a crucial role in determining model performance. Moderate insertion can enhance model expressiveness while maintaining robust generalization, whereas inserting MoBA at every layer further strengthens the model's ability to identify the optimal solution.
+
+
+\begin{table*}[!ht]
+\centering
+\scriptsize
+\caption{Performance of InterMoBA variants under Full and Time-Split settings across three different RMSD metrics.}
+\label{tab:intermoba_12col}
+\renewcommand{\arraystretch}{1.05}
+\setlength{\tabcolsep}{6pt}
+\setlength{\arrayrulewidth}{0.3pt}
+\begin{tabular}{lcccccccccccc}
+\toprule
+\multirow{3}{*}{Model} &
+\multicolumn{4}{c}{\textbf{Top-1 RMSD}} &
+\multicolumn{4}{c}{\textbf{Top-5 RMSD}} &
+\multicolumn{4}{c}{\textbf{Top-10 RMSD}} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-9} \cmidrule(lr){10-13}
+& \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} &
+  \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} &
+  \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+\cmidrule(lr){8-9} \cmidrule(lr){10-11} \cmidrule(lr){12-13}
+& \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2~\AA\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} \\
+\midrule
+InterMoBA(Layer1) & 68.3 & 1.07 & 61.9 & 1.36 & \textbf{83.4} & \textbf{0.77} & 77.2 & \textbf{0.96} & \textbf{85.5} & \textbf{0.75} & 79.0 & \textbf{0.91} \\
+InterMoBA(Layer1\&2) & 67.6 & 1.15 & 59.5 & 1.45 & 81.1 & 0.96 & 74.2 & 1.10 & 83.1 & 0.92 & 76.6 & 1.08 \\
+InterMoBA(Layer\%2) & 66.0 & 1.12 & 59.4 & 1.49 & 81.2 & 0.93 & 73.9 & 1.13 & 82.7 & 0.90 & 75.8 & 1.05 \\
+InterMoBA(Layer\%3) & 67.7 & 1.15 & 59.5 & 1.54 & 80.4 & 0.96 & 74.3 & 1.09 & 82.7 & 0.93 & 76.4 & 1.03 \\
+InterMoBA & \textbf{69.4} & \textbf{1.02} & \textbf{65.5} & \textbf{1.33} & 83.1 & 0.86 & \textbf{78.4} & 1.00 & 85.2 & 0.84 & \textbf{79.9} & 0.96 \\
+\bottomrule
+
+% ---------- 表格结束 ----------
+\end{tabular}
+
+\bigskip
+\begin{minipage}{\linewidth}
+\scriptsize
+This table shows the results of retraining the energy task in the InterMoBA model and evaluating it on the time-split evaluation set after the MoBA module is inserted with different invocation strategies (Layer1, Layer1\&2, Layer\%2, Layer\%3, and global insertion). The evaluation indicators include the ``\,$<$\,2\,\AA\ proportion'' and median (Median) of Top-1, Top-5 and Top-10 RMSDs, which are divided into Full and Time-Split data, respectively.
+\end{minipage}
+% ---------- 整个浮动体结束 ----------
+\end{table*}
+
+\section{Discussion}
+Determining the structure of protein-ligand complexes remains a fundamental challenge in drug development. To address this, we present InterMoBA, a model demonstrating significant advantages in protein-ligand docking and affinity prediction tasks. By integrating the global modeling capabilities of the transformer\cite{vaswani2017attention} architecture with the efficient sparse attention mechanism of the mixture of block attention (MoBA) module, InterMoBA achieves a synergistic balance of high accuracy and computational efficiency, rendering it particularly suitable for practical applications such as large-scale virtual screening.
+
+On established benchmarks including PDBBind, InterMoBA achieves a Top-1 success rate of 65.5\% and a Top-5 success rate of 78.4\%, outperforming current state-of-the-art methods while requiring 23.1 seconds per computation. In its implementation, the MoBA module combines block-wise self-attention with Top-K global attention, substantially enhancing the model's ability to identify critical protein-ligand interactions. This is evidenced by a marked improvement in the recovery rate, indicating the model's proficiency in accurately capturing essential binding motifs such as hydrogen bonds and hydrophobic contacts.
+
+Notably, while the MoBA module significantly boosts the Recovery Rate for key interactions, its improvement in the percentage of predictions with RMSD $<$ 2 \AA is more limited. This phenomenon arises because MoBA's Top-K mechanism excels at modeling critical binding site interactions but exhibits a limited capacity to impose global constraints on the overall molecular conformation. The implementation primarily focuses on intra-block self-attention and sparse global information flow between blocks. Consequently, the model demonstrates exceptional performance in predicting pivotal interactions but provides weaker constraints for atomic arrangements distal from the binding site, hindering substantial optimization of the overall conformation. During training, the loss functions primarily optimize local energy terms, distances, and key point matching, without explicit constraints on global spatial consistency. This biases the model towards optimizing "key points" rather than the "overall shape," resulting in high recovery rates but limited RMSD gains. Furthermore, while MoBA's sparse global attention enhances computational efficiency, it may also lead to insufficient information propagation in non-critical regions, particularly for large molecules or complex binding modes, reducing prediction accuracy for atoms far from the binding site and further constraining RMSD optimization. Therefore, while InterMoBA excels in "key point" prediction, further refinement is warranted to enhance global spatial consistency.
+
+High-recovery structural predictions hold significant value for drug screening and interpreting binding modes. InterMoBA's interpretability is manifested through visualizations of its attention mechanisms and importance scores, enabling researchers to identify critical atoms and regions in protein-ligand interactions. This capability not only aids in understanding molecular binding mechanisms but also provides a robust foundation for downstream tasks such as molecular optimization\cite{wu2024leveraging} and binding energy prediction.
+
+Looking forward, InterMoBA holds promise for enhancing its generalization capabilities on datasets featuring low-homology targets and complex molecular structures through further optimization of its architecture and training strategies. The model also possesses inherent potential for extension to predict other types of molecular interactions, including protein-protein and protein-nucleic acid complexes. Integration with multi-modal biological information could further enrich its feature representation power, ultimately enhancing the understanding and predictive modeling of complex biological systems.
+
+\section{Methods}
+
+\subsection{Preliminary}\label{AA}
+\subsubsection{Graph Representation of Protein-Ligand Complexes}
+Protein-ligand complexes can be naturally modeled as graph structures. A
+complex is represented as a graph $G = (V,E)$, where the
+node set $V = V_{L} + V_{P}$. Here, $V_{L}$ denotes all atoms
+of the ligand,
+and $V_{P} = \{ v_{j} \mid v_{i} \in V_{L}, v_{j} \in V_{W}, D(v_{i},v_{j}) < 7\,\text{\AA} \}$ represents protein
+pocket atoms within 7 \AA of any ligand atom, with $D( \cdot )$
+denoting the Euclidean distance. The edge set $E = \{ e_{ij} \mid v_{i}, v_{j} \in V\}$ includes all
+possible edges between node pairs. Node features
+are denoted as $X \in \mathbb{R}^{n \times d_{x}}$, where $X_{i}$ is the
+feature vector for the $i$-th atom. Edge features are denoted
+as $E \in \mathbb{R}^{n \times n \times d_{e}}$, with $n$ being
+the number of nodes. For edges between ligand and protein atoms,
+the edge
+feature $e_{LP} = \{ e_{ij} \mid v_{i} \in V_{L}, v_{j} \in V_{P}\}$ is
+set to 0 during the docking process.
+
+\subsubsection{Graph Transformer Structure}
+The Graph Transformer\cite{yun2019graph}\cite{yuan2022alphafold2} leverages the self-attention mechanism to
+effectively model relationships between nodes. Its core innovation lies
+in introducing edge feature biases into the multi-head self-attention.
+Given node features $X$ and edge features $E$, the
+self-attention mechanism is formulated as follows:
+
+\begin{equation}
+\text{Attn}(X,E) = \text{softmax}(A)V
+\end{equation}
+\begin{equation}
+A = \frac{QK^{T}}{\sqrt{d}} + Z(E)
+\end{equation}
+
+Here, $Q,K,V \in \mathbb{R}^{n \times d}$ are the linear projections of
+node features, and $Z(E) \in \mathbb{R}^{n \times n}$ denotes the bias
+term obtained by linearly transforming the edge features. If two nodes
+are not connected, the corresponding entry in $Z(E)$ is set
+to $-\infty$. The matrix $A$ represents the similarity between nodes,
+and the final node representations are updated via the attention
+weights.
+
+\subsection{InterMoBA Architecture}
+\subsubsection{Masked Self-Attention\cite{lee2018pre} and Block-wise Masking}
+Traditional attention mechanisms allow all nodes to interact with each
+other, making it difficult to distinguish between
+intra-complex and inter-complex information flow. Therefore, InterMoBA
+introduces Masked Self-Attention (MSA), where the attention scope of
+each node is restricted by a mask $M$:
+
+\begin{equation}
+\text{MaskAttn}(X,E,M) = \text{softmax}(A \odot M)V
+\end{equation}
+
+where $\odot$ denotes element-wise multiplication.
+
+\subsubsection{Intra-Blocks}
+Intra-Blocks are designed to capture interactions within
+the same complex (either protein or ligand). The output is the updated
+node feature $H$:
+
+\begin{equation}
+H = \text{MaskAttn}\left( X,E,M^{0} \right)
+\end{equation}
+\begin{equation}
+M_{ij}^{0} = 
+\begin{cases} 
+1 & \text{if } v_{i},v_{j} \in V_{L} \text{ or } v_{i},v_{j} \in V_{P} \\
+-\infty & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\subsubsection{Inter-Blocks}
+Inter-Blocks are used to model interactions between the protein and
+ligand. The process is as follows:
+
+\begin{equation}
+H' = \text{MaskAttn}\left( H,E',M'' \right)
+\end{equation}
+\begin{equation}
+E' = A' + \text{FFN}\left( \text{LN}(d) \right)
+\end{equation}
+\begin{equation}
+M_{ij}'' = 
+\begin{cases} 
+1 & \text{if } v_{i} \in V_{L}, v_{j} \in V_{P} \\
+-\infty & \text{otherwise}
+\end{cases}
+\end{equation}
+
+Here, $E'$ is updated via residual connection, layer normalization, and
+a feed-forward network.
+
+\subsection{MoBA Mechanism Explanation}
+The MoBA mechanism within InterMoBA is designed to dynamically allocate
+attention resources, thereby enhancing the model's focus on key regions
+or nodes. The core idea is to compute an "importance score" for each
+node and edge, dynamically adjusting the feature chunking process to
+concentrate on the most relevant areas via a Top-K selection strategy.
+The detailed workflow is as follows:
+\subsubsection{Feature Fusion and Importance Evaluation}
+As illustrated, MoBA first fuses node features, edge features, distance,
+contact frequency, and other multi-modal information. In practice, node
+and edge features are concatenated and passed through a multi-layer
+perceptron (MLP), referred to as the Feature Fusion MLP, to obtain an
+importance score for each node or edge.
+
+Let the node feature be $h_i$, and the edge feature be $e_{ij}$.The fused feature is computed as:
+\begin{equation}
+f_i = \text{MLP}_{\text{fusion}}\left(\left[h_i, \text{EdgeAgg}(e_{ij})\right]\right)
+\end{equation}
+
+Where $\text{EdgeAgg}$ denotes the aggregation of edge features, and MLP
+denotes a multi-layer perceptron.
+
+The importance score is then normalized via a sigmoid function:
+\begin{equation}
+\text{Importance}_i = \sigma(w^T f_i + b)
+\end{equation}
+
+As shown, features such as distance, contact frequency, and centrality
+score are also incorporated as inputs to the fusion process, further
+enhancing the discriminative power of the importance score.
+\subsubsection{Chunk Strategy (Dynamic Partitioning)}
+As illustrated, MoBA dynamically adjusts the chunk size for feature
+partitioning based on the importance scores of different regions. The
+specific implementation is as follows:
+
+- For regions of high importance, larger chunk sizes are allocated,
+  allowing the attention mechanism to focus more computational resources
+  on these critical areas.
+  
+- For regions of lower importance, smaller chunk sizes are assigned to
+  conserve computational resources.
+  
+- Under the constraint of a maximum sequence length, the model
+  prioritizes the modeling capacity for key regions.
+
+The ChunkStrategy module integrates node and edge features to output
+  the chunk size for each batch.
+
+\begin{equation}
+\text{ChunkSize}_b = \max(\text{MergedLen}_b, \text{BaseChunkSize})
+\end{equation}
+
+where $\text{MergedLen}_b$ denotes the length of the merged key region
+after fusion, and $\text{BaseChunkSize}$ is the base chunk size.
+
+This approach ensures that, within the limit of the maximum sequence
+length, the model allocates sufficient capacity to the most relevant
+regions, thereby enhancing its ability to capture critical interactions.
+
+
+\subsubsection{Top-K Strategy (Key Region Selection)}
+As illustrated in the figure, MoBA normalizes the fusion scores (Fusion
+Score) of all nodes or regions using softmax, and then selects the Top-K
+regions with the highest scores for focused modeling.
+
+First, apply softmax normalization to the fusion scores to
+ obtain normalized weights.
+Then, perform Top-K Selection to select the $k$ nodes or regions with
+ the highest scores, which will serve as the focus for
+ subsequent attention computation.
+The remaining regions are typically processed with down-sampling or
+ reduced attention.
+
+\begin{equation}
+\text{FusionScore}_i = \text{MLP}_{\text{fuse}}\left(\left[ \text{Imp}_i, \text{ContactFreq}_i, \text{Centrality}_i \right]\right)
+\end{equation}
+
+\begin{equation}
+\text{SoftmaxScore}_i = \frac{\exp(\text{FusionScore}_i)}{\sum_j \exp(\text{FusionScore}_j)}
+\end{equation}
+\begin{equation}
+\text{Top-K} = \text{argsort}(\text{SoftmaxScore})[:k]
+\end{equation}
+
+As shown in the upper right corner of the figure, only the Top-K regions
+are used for high-precision modeling, which significantly improves
+computational efficiency and the expressive power for key regions.
+
+As illustrated in the figure, MoBA further introduces a Gate Fusion
+mechanism, which integrates scores from different sources (such as
+importance scores and fusion scores) through a gating unit. This
+mechanism adaptively weights and fuses these scores, thereby enhancing
+the model's attention to key regions.
+
+\subsection{Edge Output and Energy Prediction}
+\subsubsection{Protein-Ligand Energy Prediction}
+To predict the energy between protein and ligand pairs, InterMoBA fuses
+node and edge features to obtain more comprehensive
+interaction representations. Specifically, the process is as follows:
+\begin{equation}
+H_{a} = \text{FFN}\left( \frac{h_{i}'h_{j}' + e_{ij}^{o} + e_{ji}^{o}}{2} \right), \quad v_{i} \in V_{L}, v_{j} \in V_{P}
+\end{equation}
+\begin{equation}
+E^{o} = \text{LN}\left( E'W \right)
+\end{equation}
+
+where $W$ denotes learnable weights, $h_{i}',h_{j}'$ are the updated
+node features, and $e_{ij}^{o},e_{ji}^{o}$ are the edge features. The
+final interaction features $H_{a}$ for each protein-ligand pair are
+obtained through a feed-forward network (FFN) after feature fusion and
+normalization.
+
+\subsection{Training Objective and Loss Function}
+\subsubsection{Interaction-aware Mixture Density Network (MDN)\cite{bishop1994mixture}}
+To model the specific interactions between ligand and receptor atoms, an
+energy function is output to capture the
+interaction features $H_{\alpha}$ between each ligand-receptor atom
+pair. The MDN parameters are predicted, and the MDN consists of a
+weighted sum of four Gaussian distributions:
+\begin{equation}
+\begin{aligned}
+L_{\text{MDN}}(d) &= -\log P\left( d \mid H_{\alpha} \right) = -\log\left( p_{1} + p_{2} + \gamma p_{3} + \omega p_{4} \right) \\
+p_{k}(d) &= a_{k} \mathcal{N} \left( d \mid \mu_{k}, \sigma_{k} \right), \quad k = 1,2,3,4 \\
+\gamma_{ij} &= 
+\begin{cases} 
+1 & \text{if } i,j \text{ are hydrophobic atoms} \\
+0 & \text{otherwise}
+\end{cases} \\
+\omega_{ij} &= 
+\begin{cases} 
+1 & (i \in A, j \in D) \text{ or } (j \in A, i \in D) \\
+0 & \text{otherwise}
+\end{cases}
+\end{aligned}
+\end{equation}
+
+Here, $a$, $\mu$, and $\sigma$ are the learnable parameters for the
+weight, mean, and variance of each Gaussian component, respectively. The
+third term is only valid for hydrophobic atom pairs, and the fourth term
+is only valid for hydrogen bond donor-acceptor pairs. The final
+objective is optimized by minimizing the negative log-likelihood loss.
+
+
+\balance
+\bibliography{reference}
+\end{document}

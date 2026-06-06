@@ -1,10 +1,21 @@
-# InterMoBA
+﻿# InterMoBA Publications
 
 **Interaction-aware Transformer with Mixture of Block Attention for Protein–Ligand Docking and Affinity Prediction**
 
-This repository hosts the **LaTeX sources, bibliography, figures, and compiled PDFs** for the manuscript and its supplementary materials, prepared to facilitate double-blind peer review.
+This repository hosts the manuscript, figures, bibliography, and submission artefacts for the InterMoBA paper. The current primary submission target is **APBC2026 (MDPI)**; the previously drafted IEEE-journal version is preserved as a fully-traceable historical archive.
 
-> **InterMoBA** is a deep-learning framework for **protein–ligand binding-pose prediction and binding-affinity scoring**. It couples a graph-based interaction encoder with a **Mixture of Block Attention (MoBA)** adapter, producing an interpretable, energy-based scoring function together with a sparse long-context attention mechanism.
+> InterMoBA is a deep-learning framework for **protein–ligand binding-pose prediction and binding-affinity scoring**. It couples a graph-based interaction encoder with a **Mixture of Block Attention (MoBA)** adapter, producing an interpretable, energy-based scoring function together with a sparse long-context attention mechanism.
+
+---
+
+## Submission status
+
+| Target | Status | Deadline | Notes |
+| --- | --- | --- | --- |
+| **APBC2026 (MDPI)** | preparing | TBD — fill in `docs/journal-notes/apbc2026.md` | Primary target |
+| **IEEE journal** (historical) | archived | — | No longer maintained; kept under `_archive/ieee-journal-2026/` with full history |
+
+> For status updates, edit `docs/submission-log.md`.
 
 ---
 
@@ -12,70 +23,83 @@ This repository hosts the **LaTeX sources, bibliography, figures, and compiled P
 
 ```
 .
-├── InterMoBA_conference/                    # Main manuscript
-│   ├── InterMoBA.tex                        # LaTeX source
-│   ├── InterMoBA.pdf                        # Compiled manuscript
-│   ├── reference.bib                        # Bibliography
-│   ├── IEEEtran.cls                         # IEEEtran class file
-│   ├── fig1.png … fig4.png                  # Main-paper figures
-│   └── *.aux, *.bbl, *.blg, *.log,
-│       *.out, *.synctex.gz                  # LaTeX build artifacts
+├── README.md                                # this file — repository index
+├── .gitignore                               # LaTeX build artifacts
 │
-└── InterMoBA supplimentary file/            # Supplementary materials
-    ├── InterMoBA_supplimentary.tex          # Supplementary LaTeX source
-    ├── InterMoBA_supplimentary.pdf          # Compiled supplementary
-    └── 1.png … 15.png, 22.png, 88.png,
-        99.png, 1010.png, 1212.png,
-        1313.png, 1414.png, 1515.png         # Supplementary figures
+├── shared/                                  # cross-target shared assets
+│   ├── figures/                             # all PNG originals (fig{n}.png + supp 1-15, 22, 88, 99, 1010, …)
+│   └── bib/references.bib                   # cross-target bibliography master
+│
+├── manuscripts/
+│   ├── mdpi-apbc2026/                       # PRIMARY submission target
+│   │   ├── main.tex                         # MDPI-style skeleton
+│   │   ├── author-info.tex                  # author block (toggle for blind/non-blind)
+│   │   ├── reference.bib                    # local copy of shared/bib/references.bib
+│   │   ├── figures/                         # local copy of shared/figures/
+│   │   ├── _template/                       # original MDPI/LaTeX templates (read-only)
+│   │   └── supplementary/                   # independent supplementary PDF (required by MDPI)
+│   │
+│   └── _archive/
+│       └── ieee-journal-2026/               # HISTORICAL target — full IEEE-journal draft
+│           ├── InterMoBA.tex
+│           ├── InterMoBA.pdf
+│           ├── reference.bib
+│           ├── IEEEtran.cls
+│           ├── fig1.png … fig4.png
+│           ├── *.aux *.bbl *.blg *.log *.out *.synctex.gz
+│           └── supplementary/
+│               ├── InterMoBA_supplimentary.tex
+│               ├── InterMoBA_supplimentary.pdf
+│               └── *.png
+│
+└── docs/
+    ├── journal-notes/
+    │   ├── README.md                        # index of journal/venue notes
+    │   └── apbc2026.md                      # APBC2026 (MDPI) requirements + checklist
+    └── submission-log.md                    # submission & review timeline per target
 ```
 
 ---
 
-## Building the PDFs
+## Building the APBC2026 (MDPI) manuscript
 
-A TeX Live / MiKTeX distribution that ships the standard `IEEEtran` class is required. The pre-built PDFs are committed so reviewers do not have to recompile.
-
-**Main manuscript** (IEEE style; the four-pass build resolves citations and cross-references):
+A TeX Live / MiKTeX distribution is required. The `.pdf` is **not** committed; reviewers / co-authors compile locally.
 
 ```bash
-cd "InterMoBA_conference"
-pdflatex InterMoBA.tex
-bibtex   InterMoBA
-pdflatex InterMoBA.tex
-pdflatex InterMoBA.tex
+cd manuscripts/mdpi-apbc2026
+pdflatex -interaction=nonstopmode main.tex
+bibtex   main
+pdflatex -interaction=nonstopmode main.tex
+pdflatex -interaction=nonstopmode main.tex
 ```
 
-**Supplementary materials** (one pass is enough):
+For the independent supplementary PDF:
 
 ```bash
-cd "InterMoBA supplimentary file"
-pdflatex InterMoBA_supplimentary.tex
+cd manuscripts/mdpi-apbc2026/supplementary
+pdflatex -interaction=nonstopmode supp.tex
 ```
 
 `latexmk -pdf <file>` runs the same sequence automatically.
 
 ---
 
-## Manuscript at a glance
+## Synchronising shared assets
 
-|                  |                                                                                                |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| **Title**        | Interaction-aware Transformer with Mixture of Block Attention for Protein–Ligand Docking and Affinity Prediction |
-| **Main style**   | `\documentclass[lettersize,journal]{IEEEtran}`                                                  |
-| **Suppl. style** | `\documentclass[conference]{IEEEtran}`                                                          |
-| **Keywords**     | Protein–Ligand Docking · Affinity Prediction · Mixture of Block Attention (MoBA) · Interaction Recovery |
-| **Code & data**  | Anonymous mirror for double-blind review: <https://anonymous.4open.science/r/InterMoBA-8F21>    |
+`manuscripts/mdpi-apbc2026/{figures,supplementary/figures,reference.bib}` are **copies** of `shared/{figures,bib}/`. Whenever the shared source changes, mirror the change into the manuscript directory. See `manuscripts/mdpi-apbc2026/figures/README.md` and `shared/bib/README.md` for the exact mirroring recipe.
 
-### Headline results — time-split PDBBind, pocket-residue setting
+---
+
+## Headline results (time-split PDBBind, pocket-residue setting)
 
 - **Top-1 docking success (RMSD < 2 Å): 65.5 %** (vs. Interformer 63.9 %)
 - **Inference time: 23.1 s / sample** on a single NVIDIA RTX 3060
-- **Hydrogen-bond recovery: 63.74 %** (≈ +13 % over prior best)
-- **Hydrophobic-interaction recovery: 54.69 %** (≈ +13 % over prior best)
+- **Hydrogen-bond recovery: 63.74 %** (≥ +13 % over prior best)
+- **Hydrophobic-interaction recovery: 54.69 %** (≥ +13 % over prior best)
 
 ---
 
 ## Notes
 
-- The committed `*.aux`, `*.bbl`, `*.blg`, `*.log`, `*.out`, and `*.synctex.gz` files are LaTeX build artifacts, kept so the build is fully reproducible on a clean checkout. They can be cleaned with `latexmk -c` and excluded from future commits via a `.gitignore`.
-- For double-blind submission, no author information is recorded in this repository; the corresponding author block in the manuscript is left empty by design.
+- Anonymous mirror (previously linked in the IEEE-version README) is retained for now; whether APBC2026 needs it is **TBD** — see `docs/journal-notes/apbc2026.md`.
+- The committed `*.aux`, `*.bbl`, `*.blg`, `*.log`, `*.out`, `*.synctex.gz` files under `_archive/ieee-journal-2026/` are historical LaTeX build artefacts preserved for reproducibility of the IEEE version. The MDPI manuscript directory does not commit build artefacts (see `.gitignore`).

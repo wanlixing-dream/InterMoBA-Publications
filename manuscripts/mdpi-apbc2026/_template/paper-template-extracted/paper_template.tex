@@ -1,0 +1,223 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[justification=raggedright, singlelinecheck=false, skip=0pt]{caption}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[left]{authblk}
+\usepackage{lineno}
+\usepackage{float}
+\usepackage{fancyhdr}
+
+\linenumbers
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\small APBC2026}
+\fancyfoot[R]{\thepage}
+
+\captionsetup{
+    labelfont       = bf,
+    labelsep        = period,
+    justification   = raggedright,
+    singlelinecheck = false,
+    skip            = 0pt
+}
+
+\renewcommand\Affilfont{\small}
+
+\renewenvironment{abstract}
+  {\noindent\small\textbf{Abstract:}\enspace}
+  {\par} 
+
+\newcommand{\keywords}[1]{
+  \noindent\begin{flushleft}\small\textbf{Keywords:}\enspace #1\end{flushleft}
+  \nointerlineskip
+  \noindent\rule{\textwidth}{0.8pt}
+  \vskip 2em
+}
+
+\makeatletter
+\renewcommand{\maketitle}{
+  \begin{flushleft}
+    \nointerlineskip
+    \noindent\rule{\textwidth}{0.8pt}
+    {\huge \bfseries \@title \par}
+    \vskip 2em
+    {\@author \par}
+    \vskip 1.5em
+  \end{flushleft}
+}
+
+\renewenvironment{proof}[1][\proofname]{\par
+  \pushQED{\qed}%
+  \normalfont \topsep6\p@\@plus6\p@\relax
+  \trivlist
+  \item[\hskip\labelsep \bfseries #1\@addpunct{.}]\ignorespaces
+}{%
+  \popQED\endtrivlist\@endpefalse
+}
+\makeatother
+
+\renewenvironment{abstract}
+  {\noindent\small\textbf{Abstract:}\enspace}
+  {\par\vskip 1em}
+
+\newcommand{\keywords}[1]{
+  \noindent\begin{flushleft}\textbf{Keywords:}\enspace #1\end{flushleft}
+  \nointerlineskip
+  \noindent\rule{\textwidth}{0.8pt}
+  \vskip 2em
+}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
+\titlespacing{\section}{0pt}{3.5ex plus 1ex minus .2ex}{0.5ex}
+
+\titleformat{\subsection}{\normalfont\normalsize\itshape}{\thesubsection.}{0.5em}{}
+\titlespacing{\subsection}{0pt}{2ex plus 0.5ex minus .2ex}{0.1ex}
+
+\titleformat{\subsubsection}{\normalfont\normalsize}{\thesubsubsection.}{0.5em}{}
+\titlespacing{\subsubsection}{0pt}{0.5ex plus 0.2ex minus .1ex}{0.1ex}
+
+\title{Title}
+\author[1]{\textbf{Firstname Lastname}}
+\author[2]{\textbf{Firstname Lastname}}
+\author[2,*]{\textbf{Firstname Lastname}}
+\affil[1]{Affiliation 1; e-mail@e-mail.com}
+\affil[2]{Affiliation 2; e-mail@e-mail.com}
+\affil[*]{Correspondence: e-mail@e-mail.com; Tel.: (optional; include country code; if there are multiple corresponding authors, add author initials)}
+\vskip 1em
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+A single paragraph of about 250 words maximum. Please use the following style of structured abstracts, but without headings: (1) Background: Place the question addressed in a broad context; (2) Methods: briefly describe the main methods; (3) Results: summarize findings; (4) Conclusions: indicate interpretations.
+\end{abstract}
+
+\keywords{keyword 1; keyword 2; keyword 3 (List three to ten pertinent keywords specific to the article)}
+
+\section{Introduction}
+The introduction should briefly place the study in a broad context and highlight why it is important. It should define the purpose of the work and its significance. The current state of the research field should be carefully re-viewed and key publications cited. Please highlight controversial and diverging hypotheses when necessary. Finally, briefly mention the main aim of the work and highlight the principal conclusions. As far as possible, please keep the introduction comprehensible to scientists outside your particular field of research. References should be numbered in order of appearance and indicated by a numeral or numerals in square brackets—e.g., [1] or [2,3], or [4–6]. See the end of the document for further details on references.
+
+\section{Materials and Methods}
+Please note that the publication of your manuscript implicates that you must make all materials, data, computer code, and protocols associated with the publication available to readers. Please disclose at the submission stage any restrictions on the availability of materials or information. Research manuscripts reporting large datasets that are deposited in a publicly available database should specify where the data have been deposited and provide the rele-vant accession numbers.
+
+\section{Results}
+This section may be divided by subheadings. It should provide a concise and precise description of the experi-mental results, their interpretation, as well as the experimental conclusions that can be drawn.
+
+\subsection{Subsection}
+
+\subsubsection{Figures and Tables}
+All figures and tables should be cited in the main text as Figure 1 and Table 1.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{image1}
+    \caption{This is a figure. Schemes follow the same formatting.}
+    \label{fig:fig1}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \caption{This is a table. Tables should be placed in the main text near to the first time they are cited.}
+    \begin{tabularx}{\textwidth}{XXX}
+        \toprule
+        \textbf{Column 1} & \textbf{Column 2} & \textbf{Column 3} \\ \midrule
+        entry 1           & value             & value             \\
+        entry 2           & value             & value\textsuperscript{1} \\ \bottomrule
+    \end{tabularx}
+    \vspace{2pt}
+    \begin{minipage}{\textwidth}
+        \small \textsuperscript{1} Tables may have a footer.
+    \end{minipage}
+\end{table}
+
+\subsubsection{Formatting of Mathematical Components}
+This is example 1 of an equation:
+\begin{equation}
+    a = 1,
+\end{equation}
+the text following an equation need not be a new paragraph. Please punctuate equations as regular text. This is example 2 of an equation:
+\begin{equation}
+    a = b + c + d + e + f + \ldots
+\end{equation}
+the text following an equation need not be a new paragraph. Please punctuate equations as regular text.
+
+\subsection{Theorem}
+Theorem-type environments (including propositions, lemmas, corollaries etc.) can be formatted as follows:
+
+\begin{theorem}
+Example text of a theorem. Theorems, propositions, lemmas, etc. should be numbered sequentially (i.e., Proposition 2 follows Theorem 1). Examples or Remarks use the same formatting, but should be numbered separately, so a document may contain Theorem 1, Remark 1 and Example 1.
+\end{theorem}
+
+The text continues here. Proofs must be formatted as follows:
+
+\begin{proof}[Proof of Theorem 1]
+Text of the proof. Note that the phrase ``of Theorem 1'' is optional if it is clear which theorem is being referred to. Always finish a proof with the following symbol.
+\end{proof}
+
+The text continues here.
+
+\section{Discussion}
+Authors should discuss the results and how they can be interpreted from the perspective of previous studies and of the working hypotheses. The findings and their implications should be discussed in the broadest context pos-sible. Future research directions may also be highlighted.
+
+\section{Conclusions}
+This section is not mandatory but can be added to the manuscript if the discussion is unusually long or complex.
+
+\vspace{1.5em}
+{
+\small
+\setlength{\parskip}{0.8em}
+
+\noindent \textbf{Supplementary Materials:} Please compress any supplementary files into a .zip archive and upload them along with your submission to EasyChair.
+
+\noindent \textbf{Author Contributions:} For research articles with several authors, a short paragraph specifying their individual contributions must be provided. The following statements should be used ``Conceptualization, X.X. and Y.Y.; methodology, X.X.; software, X.X.; validation, X.X., Y.Y. and Z.Z.; formal analysis, X.X.; investigation, X.X.; resources, X.X.; data curation, X.X.; writing---original draft preparation, X.X.; writing---review and editing, X.X.; visualization, X.X.; supervision, X.X.; project administration, X.X.; funding acquisition, Y.Y.''
+
+\noindent \textbf{Funding:} Please add: ``This research received no external funding'' or ``This research was funded by NAME OF FUNDER, grant number XXX'' and ``The APC was funded by XXX''.
+
+\noindent \textbf{Data Availability Statement:} Please provide details regarding where data supporting reported results can be found, including links to publicly archived datasets analyzed or generated during the study. If the study did not report any data, you might add ``Not applicable'' here.
+
+\noindent \textbf{Conflicts of Interest:} Declare conflicts of interest or state ``The authors declare no conflict of interest.'' Authors must identify and declare any personal circumstances or interest that may be perceived as inappropriately influencing the representation or interpretation of reported research results. If there is no role, please state ``The funders had no role in the design of the study; in the collection, analyses, or interpretation of data; in the writing of the manuscript; or in the decision to publish the results''.
+\par
+}
+
+\section*{References}
+References must be numbered in order of appearance in the text (including citations in tables and legends) and listed indi-vidually at the end of the manuscript. In the text, reference numbers should be placed in square brackets [ ] and placed before the punctuation; for example [1], [1--3] or [1,3]. For embedded citations in the text with pagination, use both parentheses and brackets to indicate the reference number and page numbers; for example [5] (p. 10), or [6] (pp. 101--105).
+
+\begin{enumerate}[label={[\arabic*]}, leftmargin=2.5em]
+    \item Author 1, A.B.; Author 2, C.D. Title of the article. \textit{Abbreviated Journal Name} \textbf{Year}, \textit{Volume}, page range.
+    \item Author 1, A.; Author 2, B. Title of the chapter. In \textit{Book Title}, 2nd ed.; Editor 1, A., Editor 2, B., Eds.; Publisher: Publisher Location, Country, 2007; Volume 3, pp. 154--196.
+    \item Author 1, A.; Author 2, B. \textit{Book Title}, 3rd ed.; Publisher: Publisher Location, Country, 2008; pp. 154--196.
+    \item Author 1, A.B.; Author 2, C. Title of Unpublished Work. \textit{Abbreviated Journal Name} year, phrase indicating stage of publication (submitted; accepted; in press).
+    \item Author 1, A.B. (University, City, State, Country); Author 2, C. (Institute, City, State, Country). Personal communication, 2012.
+    \item Author 1, A.B.; Author 2, C.D.; Author 3, E.F. Title of Presentation. In \textit{Proceedings of the Name of the Conference}, Location of Conference, Country, Date of Conference (Day Month Year).
+    \item Author 1, A.B. Title of Thesis. Level of Thesis, Degree-Granting University, Location of University, Date of Completion.
+    \item Title of Site. Available online: URL (accessed on Day Month Year).
+\end{enumerate}
+
+\vspace{2em}
+
+\noindent{\color{red}\textbf{Ideally, the main text (not including Abstract, Figure Legends, Author Contributions, Acknowledgments, and References) should be limited to 5,000 words.}}
+
+\end{document}

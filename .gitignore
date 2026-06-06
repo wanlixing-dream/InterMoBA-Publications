@@ -1,0 +1,53 @@
+﻿# =========================================================================
+# InterMoBA Publications — .gitignore
+# =========================================================================
+# Covers both IEEE-journal and MDPI/APBC2026 LaTeX build artefacts.
+# The IEEE archive under _archive/ieee-journal-2026/ has its build
+# artefacts intentionally committed (for reproducibility of the historical
+# IEEE build) and is therefore NOT ignored here.
+# =========================================================================
+
+# LaTeX build artefacts (MDPI manuscript & any future targets)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.fdb_latexmk
+*.fls
+*.run.xml
+*.bcf
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# Compiled PDF outputs (un-comment if you do NOT want PDFs in git)
+# *.pdf
+!_archive/**/*.pdf
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build / virtualenv / node_modules (in case the repo ever hosts tooling)
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+
+# Local-only submission notes (do not commit; live in 1Password / private)
+secrets/
+*.local.tex
