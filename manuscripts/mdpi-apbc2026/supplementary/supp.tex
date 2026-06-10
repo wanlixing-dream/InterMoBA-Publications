@@ -1,53 +1,237 @@
-﻿% InterMoBA — APBC2026 (MDPI) supplementary materials (placeholder)
-% =========================================================================
-% This file is the **independent supplementary PDF** required by MDPI.
-% Final submission: zip this directory into a single .zip and upload
-% alongside the main manuscript on the MDPI submission portal.
-% =========================================================================
-\documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[margin=2.5cm]{geometry}
+﻿\documentclass[11pt,a4paper]{article}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
 \usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
-\usepackage{lineno}
-\usepackage{fancyhdr}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage{float}      % 提供 [H] 选项
 \usepackage[hidelinks]{hyperref}
 
-\linenumbers
-\pagestyle{fancy}
-\fancyhf{}
-\fancyfoot[L]{\small APBC2026 --- Supplementary Materials}
-\fancyfoot[R]{\thepage}
-\renewcommand{\headrulewidth}{0pt}
+\captionsetup{labelfont=bf, labelsep=period}
 
-\captionsetup{labelfont=bf,labelsep=period,justification=raggedright,singlelinecheck=false,skip=0pt}
-
-\title{Supplementary Materials for InterMoBA}
-\author{}
+\title{Supplementary Materials for\\ Interaction-aware Transformer with Mixture of Block Attention\\ for protein-ligand docking and affinity prediction (InterMoBA)}
+\author{Jiayi Deng, Liangxi Wu, Simin Huang, Lixin Liang, Bingding Huang, Xin Wang\\ \small{School of Artificial Intelligence, Shenzhen Technology University}}
 \date{}
 
 \begin{document}
 \maketitle
-\thispagestyle{fancy}
+\tableofcontents
 
-\section*{Overview}
-% TODO: short overview of supplementary materials
+\section*{Guide to Supplementary Materials}
+This document provides additional formulas, tables, and figures that support the main text of our APBC 2026 paper “Interaction-aware Transformer with Mixture of Block Attention for protein-ligand docking and affinity prediction” (InterMoBA). The following items are referenced in the main manuscript:
 
-% Figure S1 (uses shared fig1.png)
-\begin{figure}[htbp]
+\begin{itemize}
+    \item \textbf{Supplementary Eq. S1}: Detailed calculation of the dynamic chunk size in the MoBA mechanism (referenced in the \textit{MoBA Mechanism} subsection).
+    \item \textbf{Supplementary Table S1}: Full results of the MoBA module insertion strategy ablation study (referenced in the \textit{Insertion Strategies of the MoBA Module} subsection).
+    \item \textbf{Supplementary Figures S1–S15}: Additional analyses, including ligand flexibility correlation, ranking performance, affinity correlation, feature distribution changes, homology comparison, PoseBusters benchmark, and extensive feature space visualizations (t-SNE, PCA, UMAP, Isomap). These figures extend the analyses presented in the main \textit{Results} section.
+    \item \textbf{Supplementary Figure S16}: Detailed illustration of the MoBA chunk and Top-K strategy (corresponding to Fig.~3 of the original full-length paper).
+\end{itemize}
+
+All supplementary figures are to be placed in the \texttt{figures/} directory. For reproducibility, we also include detailed training hyperparameters and dataset split information.
+
+\section{Supplementary Methods}
+
+\subsection{Detailed MoBA Mechanism}
+
+\subsubsection{Dynamic Partition and Top-K Selection Details}
+
+The MoBA mechanism dynamically allocates attention resources by computing an importance score for each node/edge and adjusting feature chunking via a Top-K selection strategy. The chunk size for each region is dynamically set based on an aggregated score of its node and edge features, distance, contact frequency, and centrality.
+
+\textbf{Supplementary Eq. S1: Calculation of Dynamic Chunk Size.}
+The chunk size for a batch region $b$ is determined as follows:
+\begin{equation}
+\text{ChunkSize}_b = \max(\text{MergedLen}_b, \text{BaseChunkSize})
+\end{equation}
+where $\text{BaseChunkSize}=32$ is the minimum granularity used in our experiments. $\text{MergedLen}_b$ is the length of the merged key region after fusing importance scores. The fusion score for a node $i$ is calculated as:
+\begin{equation}
+\text{FusionScore}_i = \text{MLP}_{\text{fuse}}\left(\left[ \text{Imp}_i, \text{ContactFreq}_i, \text{Centrality}_i \right]\right)
+\end{equation}
+Here, $\text{Imp}_i$ is the node importance score, $\text{ContactFreq}_i$ is the contact frequency, and $\text{Centrality}_i$ is a centrality measure. These scores are then normalized using softmax:
+\begin{equation}
+\text{SoftmaxScore}_i = \frac{\exp(\text{FusionScore}_i)}{\sum_j \exp(\text{FusionScore}_j)}
+\end{equation}
+The Top-K highest-scoring regions are selected for full-precision attention:
+\begin{equation}
+\text{Top-K} = \text{argsort}(\text{SoftmaxScore})[:k]
+\end{equation}
+where $k = \max(10, \lceil 0.05 \times N \rceil)$, and $N$ is the total number of nodes in the input graph.
+
+\subsection{Training Hyperparameters}
+The model was trained using the AdamW optimizer with an initial learning rate of $1\times10^{-4}$, a weight decay of $1\times10^{-2}$, and a batch size of 32. We employed a cosine annealing learning rate scheduler with a warm-up period of 5000 steps. Mixed-precision training (fp16) was used to accelerate computation and reduce memory footprint. All models were trained on a single NVIDIA RTX 4090 GPU for a maximum of 200 epochs, with early stopping based on the validation loss.
+
+\subsection{Dataset Split Details}
+For the time-split PDBBind benchmark, we followed the protocol established in previous works (e.g., DiffDock, Interformer). Specifically, we used the PDBBind v2016 dataset and split complexes based on their PDB release year, ensuring that all test set complexes have a release year later than 2016, while training and validation sets contain older entries. This yields 333 complexes in the test set. The full (random) split is also used for ablation studies.
+
+\subsection{Monte Carlo Sampling Procedure}
+InterMoBA generates candidate ligand poses via a Monte Carlo (MC) sampling algorithm. Starting from an initial random orientation and torsion angles of the ligand within the binding pocket, the MC simulation performs 5000 steps. At each step, a random translation, rotation, or torsion change is proposed, and the energy (negative log-likelihood of the mixture density function) is evaluated. The proposal is accepted according to the Metropolis criterion. The lowest-energy conformations among the sampled trajectory are retained as the Top-K poses (K=10 by default).
+
+\section{Supplementary Results}
+
+\subsection{MoBA Insertion Strategy Analysis}
+
+\textbf{Supplementary Table S1: Performance of InterMoBA variants under Full and Time-Split settings across different MoBA insertion strategies.}
+This table provides the complete numerical results for the MoBA insertion frequency ablation study, corresponding to the analysis in the main text.
+
+\begin{table}[H]
+\centering
+\tiny
+\caption{Performance of InterMoBA variants under Full and Time-Split settings across three different RMSD metrics.}
+\label{tab:intermoba_12col}
+\renewcommand{\arraystretch}{1.05}
+\setlength{\tabcolsep}{4pt}
+\setlength{\arrayrulewidth}{0.3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccccccc}
+\toprule
+\multirow{3}{*}{Model} &
+\multicolumn{4}{c}{\textbf{Top-1 RMSD}} &
+\multicolumn{4}{c}{\textbf{Top-5 RMSD}} &
+\multicolumn{4}{c}{\textbf{Top-10 RMSD}} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-9} \cmidrule(lr){10-13}
+& \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} &
+  \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} &
+  \multicolumn{2}{c}{\textbf{Full}} & \multicolumn{2}{c}{\textbf{Time-Split}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+\cmidrule(lr){8-9} \cmidrule(lr){10-11} \cmidrule(lr){12-13}
+& \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} &
+  \makecell{\%$<$2Å\textsuperscript{↑}} & \makecell{Median\textsuperscript{↓}} \\
+\midrule
+InterMoBA(Layer1) & 68.3 & 1.07 & 61.9 & 1.36 & \textbf{83.4} & \textbf{0.77} & 77.2 & \textbf{0.96} & \textbf{85.5} & \textbf{0.75} & 79.0 & \textbf{0.91} \\
+InterMoBA(Layer1\&2) & 67.6 & 1.15 & 59.5 & 1.45 & 81.1 & 0.96 & 74.2 & 1.10 & 83.1 & 0.92 & 76.6 & 1.08 \\
+InterMoBA(Layer\%2) & 66.0 & 1.12 & 59.4 & 1.49 & 81.2 & 0.93 & 73.9 & 1.13 & 82.7 & 0.90 & 75.8 & 1.05 \\
+InterMoBA(Layer\%3) & 67.7 & 1.15 & 59.5 & 1.54 & 80.4 & 0.96 & 74.3 & 1.09 & 82.7 & 0.93 & 76.4 & 1.03 \\
+InterMoBA & \textbf{69.4} & \textbf{1.02} & \textbf{65.5} & \textbf{1.33} & 83.1 & 0.86 & \textbf{78.4} & 1.00 & 85.2 & 0.84 & \textbf{79.9} & 0.96 \\
+\bottomrule
+\end{tabular}}
+\medskip
+\footnotesize{This table shows the results of retraining the energy task in the InterMoBA model and evaluating it on the time-split evaluation set after the MoBA module is inserted with different invocation strategies (Layer1, Layer1\&2, Layer\%2, Layer\%3, and global insertion). Bold numbers indicate the best performance for each metric.}
+\end{table}
+
+\section{Supplementary Figures}
+
+All figures below correspond to the original supplementary file (1.png to 15.png) plus an additional figure (fig3.png) illustrating the MoBA chunk and Top-K strategy.
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/1.png}
-    \caption{Correlation analysis between ligand flexibility and prediction success rate.}
+    \caption{\textbf{Correlation analysis between ligand flexibility and prediction success rate.} Increasing ligand flexibility (rotatable bond count) significantly reduces prediction success (RMSD $<$ 2\,\AA), from $\sim$90\% (low-flex) to $<$10\% (high-flex), with rising RMSD, highlighting flexibility as a critical accuracy bottleneck.}
+    \label{fig:s1}
 \end{figure}
 
-% Figure S2
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{figures/2.png}
-    \caption{Top-ranked pose RMSD vs.\ lower-ranked poses across 12 complexes.}
+    \includegraphics[width=0.8\textwidth]{figures/2.png}
+    \caption{\textbf{Effectiveness of top-ranked poses.} The six sub-diagrams collectively illustrate that top-ranked poses consistently exhibit lower RMSD values across various complexes, underscoring the model's robustness in ranking poses.}
+    \label{fig:s2}
 \end{figure}
 
-% ... append S3..S15, S22, S88, S99, S1010, S1212, S1313, S1414, S1515 here
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/3.png}
+    \caption{\textbf{Correlation between experimental pIC50 and predicted binding energy.} A negative correlation is observed, demonstrating the model's dual capability in affinity discrimination and conformational prediction.}
+    \label{fig:s3}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/4.png}
+    \caption{\textbf{Impact of MoBA operation on node feature distribution.} After MoBA, feature values become more concentrated and evenly distributed, indicating effective normalization and adjustment.}
+    \label{fig:s4}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/5.png}
+    \caption{\textbf{Docking accuracy across homology subsets.} InterMoBA consistently outperforms DiffDock and DeepDock across low (0.0-0.3), medium (0.3-0.95), and high (0.95-1.0) homology subsets. Accuracy is measured as the percentage of poses with RMSD $<$ 2\,\AA.}
+    \label{fig:s5}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/6.png}
+    \caption{\textbf{Comparison of success rates on the PoseBusters Benchmark Version 2.} The dark section represents predictions with RMSD $<$ 2\,\AA; the light section indicates poses that additionally pass PoseBusters verification (PB-valid). InterMoBA shows strong RMSD performance but has room for improvement in physical plausibility checks, primarily due to atomic distance violations.}
+    \label{fig:s6}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/7.png}
+    \caption{\textbf{t-SNE visualization of inter node features across layers.} The 2D projection shows how feature clustering and spatial distribution evolve across layers 0, 1, and 2 of the MoBA model, demonstrating improved separation after MoBA.}
+    \label{fig:s7}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/8.png}
+    \caption{\textbf{t-SNE visualizations of node and edge features before and after MoBA.} (a) Node features; (b) Edge features. Colors indicate node types. MoBA enhances the structural organization of both node and edge feature spaces.}
+    \label{fig:s8}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/9.png}
+    \caption{\textbf{t-SNE visualizations of intra node and intra edge features across layers.} (a) Intra node features; (b) Intra edge features. MoBA processing leads to improved clustering and distribution differences at each layer.}
+    \label{fig:s9}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/10.png}
+    \caption{\textbf{PCA-reduced distributions of inter node and inter edge features.} (a) Inter node features; (b) Inter edge features. Colors denote node types, showing the impact of MoBA on feature distribution and type separability.}
+    \label{fig:s10}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/11.png}
+    \caption{\textbf{PCA-reduced distributions of intra node and intra edge features.} (a) Intra node features; (b) Intra edge features. MoBA improves feature distribution, type separability, and edge feature organization across layers.}
+    \label{fig:s11}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/12.png}
+    \caption{\textbf{UMAP projections of inter node and inter edge features.} (a) Inter node features; (b) Inter edge features. UMAP confirms that MoBA enhances clustering structure, with colors indicating node types.}
+    \label{fig:s12}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/13.png}
+    \caption{\textbf{UMAP projections of intra node and intra edge features.} (a) Intra node features; (b) Intra edge features. MoBA improves the clustering structure of node and edge features.}
+    \label{fig:s13}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/14.png}
+    \caption{\textbf{Isomap projections of inter node and inter edge features.} (a) Inter node features; (b) Inter edge features. Isomap reveals changes in feature space structure due to MoBA, with colors indicating node types.}
+    \label{fig:s14}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/15.png}
+    \caption{\textbf{Isomap projections of intra node and intra edge features.} (a) Intra node features; (b) Intra edge features. MoBA induces clear changes in feature space structure, improving clustering and distribution.}
+    \label{fig:s15}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/fig3.png}
+    \caption{\textbf{Feature-fusion-based chunk and Top-K strategy.} \\
+    \textbf{a} Chunk strategy. Node and edge features are extracted separately, fused via a learnable projection, and used to compute per-residue importance scores. Chunk boundaries are then adjusted dynamically according to these scores and spatial proximity, while respecting a maximum sequence-length limit, enabling efficient and context-aware processing. \\
+    \textbf{b} Top-K strategy. Multiple signals (feature encoding, inter-node distances, and contact frequency) are fused to yield a normalized importance score for each node. The Top-K highest-scoring nodes are retained for downstream analysis and modeling, substantially improving computational efficiency and predictive accuracy.}
+    \label{fig:s16}
+\end{figure}
 
 \end{document}
