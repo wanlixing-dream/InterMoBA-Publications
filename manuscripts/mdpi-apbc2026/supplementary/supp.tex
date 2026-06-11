@@ -61,8 +61,33 @@ The Top-K highest-scoring regions are selected for full-precision attention:
 \end{equation}
 where $k = \max(10, \lceil 0.05 \times N \rceil)$, and $N$ is the total number of nodes in the input graph.
 
+\subsection{Inter-Blocks Computation Details}
+
+In the main paper, the Inter-Blocks module is introduced to model cross-molecular interactions between protein and ligand atoms. Due to space constraints, the complete derivation of the attention update was omitted. Here we provide the full formulation that corresponds to Equation~(4) in the main text.
+
+Given the updated node features $H$ from the previous Intra-Blocks (Equation~(5) in the main paper) and the edge feature transformation $E'$, the Inter-Blocks apply masked self-attention with a protein–ligand specific mask $M''$:
+
+\begin{equation}
+H^{\text{inter}} = \mathrm{MaskAttn}(H, E', M''),
+\end{equation}
+where $\mathrm{MaskAttn}$ is defined in Equation~(3) of the main paper. The mask $M''$ is defined element-wise as:
+\begin{equation}
+M''_{ij} = \begin{cases}
+1 & \text{if } v_i \in V_L,\; v_j \in V_P \quad \text{(ligand-to-protein direction)},\\
+1 & \text{if } v_i \in V_P,\; v_j \in V_L \quad \text{(protein-to-ligand direction)},\\
+-\infty & \text{otherwise}.
+\end{cases}
+\end{equation}
+This ensures that attention is only computed between ligand and protein nodes, fully capturing bidirectional intermolecular interactions while ignoring intra-molecular pairs.
+
+The edge feature transformation $E'$ is obtained by combining the original distance-based bias $A'$ with a residual update:
+\begin{equation}
+E' = A' + \mathrm{FFN}\bigl(\mathrm{LN}(d)\bigr),
+\end{equation}
+where $A'$ is the distance‑based attention bias (derived from interatomic distances), $d$ denotes the pairwise distance matrix, $\mathrm{LN}$ is layer normalization, and $\mathrm{FFN}$ is a two‑layer feed‑forward network. This formulation corresponds exactly to the missing Equation~(4) in the main paper and completes the description of the Inter-Blocks module.
+
 \subsection{Training Hyperparameters}
-The model was trained using the AdamW optimizer with an initial learning rate of $1\times10^{-4}$, a weight decay of $1\times10^{-2}$, and a batch size of 32. We employed a cosine annealing learning rate scheduler with a warm-up period of 5000 steps. Mixed-precision training (fp16) was used to accelerate computation and reduce memory footprint. All models were trained on a single NVIDIA RTX 4090 GPU for a maximum of 200 epochs, with early stopping based on the validation loss.
+The model was trained using the AdamW optimizer with an initial learning rate of $1\times10^{-4}$, a weight decay of $1\times10^{-2}$, and a batch size of 32. We employed a cosine annealing learning rate scheduler with a warm-up period of 5000 steps. Mixed-precision training (fp16) was used to accelerate computation and reduce memory footprint. Models were trained on a single NVIDIA RTX 3080 GPU for a maximum of 200 epochs, with early stopping based on the validation loss.
 
 \subsection{Dataset Split Details}
 For the time-split PDBBind benchmark, we followed the protocol established in previous works (e.g., DiffDock, Interformer). Specifically, we used the PDBBind v2016 dataset and split complexes based on their PDB release year, ensuring that all test set complexes have a release year later than 2016, while training and validation sets contain older entries. This yields 333 complexes in the test set. The full (random) split is also used for ablation studies.
