@@ -198,7 +198,11 @@ Inter-Blocks model protein-ligand interactions:
 H' = \text{MaskAttn}(H,E',M''),\quad
 M_{ij}'' = \begin{cases} 1 & v_i \in V_L, v_j \in V_P \\ -\infty & \text{otherwise} \end{cases}.
 \end{equation}
-where $E' = A' + \text{FFN}(\text{LN}(d))$.
+%where $E' = A' + \text{FFN}(\text{LN}(d))$.
+\begin{equation}
+E' = A' + \text{FFN}(\text{LN}(d)).
+\end{equation}
+
 
 \subsection{MoBA Mechanism}
 The MoBA mechanism dynamically allocates attention resources by computing an importance score for each node/edge and adjusting feature chunking via a Top-K selection strategy, effectively mitigating the dilution problem of global attention \cite{peng2024limitations}.
