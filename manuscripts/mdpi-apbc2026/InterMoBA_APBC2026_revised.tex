@@ -133,7 +133,7 @@
 Accurate prediction of protein-ligand binding modes and affinities is fundamental to computer-aided drug design, yet existing deep learning methods struggle to jointly capture long-range atomic interactions, physical plausibility, and computational efficiency. We propose InterMoBA, an interaction-aware Transformer that integrates a Mixture of Block Attention (MoBA) adapter with a hierarchical intra-/inter-block encoder. MoBA dynamically partitions the input into chunks and applies a Top-K sparse attention gate, focusing on critical protein-ligand contact regions while suppressing global attention dilution. On the time-split PDBBind benchmark, InterMoBA achieves a Top-1 docking success rate (RMSD $< 2$ \AA) of 65.5\% under the pocket-residue-specified scenario, surpassing Interformer (63.9\%) while reducing the per-sample runtime to 23.1 seconds. InterMoBA recovers 63.74\% of hydrogen bonds and 54.69\% of hydrophobic interactions, exceeding the best baseline by over 13 percentage points. InterMoBA balances docking accuracy, physical interaction fidelity, and computational efficiency, making it well suited for large-scale virtual screening. This study focuses exclusively on pocket-known docking.
 \end{abstract}
 
-\keywords{Protein-Ligand Docking; Affinity Prediction; Mixture of Block Attention (MoBA); Interaction Recovery}
+\keywords{protein-ligand docking; affinity prediction; mixture of block attention; interaction recovery}
 
 \section{Introduction}
 Within drug discovery, predicting protein-ligand interactions is fundamental to pharmaceutical development. Experimental methods (X-ray, NMR) are precise but slow and costly for large-scale screening. Computational virtual screening \cite{dhakal2022artificial} has therefore gained traction, yet current predictive models face three persistent challenges \cite{wang2024prediction,harren2024modern}: Specifically, existing models struggle to explicitly model non-covalent interactions, insufficiently fuse long-range with local features, and suffer from prohibitive computational overhead (e.g., Interformer's 29.1s per sample).
@@ -393,7 +393,7 @@ We presented InterMoBA, a model that integrates the global modeling capabilities
 
 \noindent \textbf{Author Contributions:} J.D., L.W., and S.H. contributed equally to this work. X.W. and B.H. are co-corresponding authors. All authors reviewed and approved the manuscript.
 
-\noindent \textbf{Funding:} This study was supported by the Shenzhen Science and Technology Program (JCYJ20250604145033042), Shenzhen Science and Technology Program (KJZD20240903095605007) and Shenzhen Medical Research Fund (D250402003).
+\noindent \textbf{Funding:} This study was supported by the Shenzhen Science and Technology Program (JCYJ2025060414\allowbreak5033042), Shenzhen Science and Technology Program (KJZD20240903095605007) and Shenzhen Medical Research Fund (D250402003).
 
 \noindent \textbf{Data Availability Statement:} The source code and all datasets used in this study are publicly available at \url{https://github.com/WangLabforComputationalBiology/InterMoBA}. Additional experimental details and configurations are described in the main text and the supplementary file.
 
