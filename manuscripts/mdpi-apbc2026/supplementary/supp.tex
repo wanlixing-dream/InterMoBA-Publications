@@ -28,6 +28,9 @@ This document provides additional formulas, tables, and figures that support the
 \begin{itemize}
     \item \textbf{Supplementary Eq. S1}: Detailed calculation of the dynamic chunk size in the MoBA mechanism (referenced in the \textit{MoBA Mechanism} subsection).
     \item \textbf{Supplementary Table S1}: Full results of the MoBA module insertion strategy ablation study (referenced in the \textit{Insertion Strategies of the MoBA Module} subsection).
+    \item \textbf{Supplementary Table S2}: Theoretical implications of the Top-K selection ratio (referenced in the \textit{Discussion} section).
+    \item \textbf{Supplementary Note 1}: Relationship between sparse attention and PoseBusters PB-valid gap.
+    \item \textbf{Supplementary Note 2}: Causes and potential remedies for atomic distance violations.
     \item \textbf{Supplementary Figures S1–S15}: Additional analyses, including ligand flexibility correlation, ranking performance, affinity correlation, feature distribution changes, homology comparison, PoseBusters benchmark, and extensive feature space visualizations (t-SNE, PCA, UMAP, Isomap). These figures extend the analyses presented in the main \textit{Results} section.
     \item \textbf{Supplementary Figure S16}: Detailed illustration of the MoBA chunk and Top-K strategy (corresponding to Fig.~3 of the original full-length paper).
 \end{itemize}
@@ -140,6 +143,55 @@ InterMoBA & \textbf{69.4} & \textbf{1.02} & \textbf{65.5} & \textbf{1.33} & 83.1
 \medskip
 \footnotesize{This table shows the results of retraining the energy task in the InterMoBA model and evaluating it on the time-split evaluation set after the MoBA module is inserted with different invocation strategies (Layer1, Layer1\&2, Layer\%2, Layer\%3, and global insertion). Bold numbers indicate the best performance for each metric.}
 \end{table}
+
+\subsection{Analysis of Top-K Selection Ratio on RMSD and Interaction Recovery}
+
+\textbf{Supplementary Table S2: Theoretical implications of the current Top-K selection ratio.}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Theoretical implications of the current Top-K selection ratio.}}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Parameter} & \textbf{Value / Implication} \\
+\midrule
+Selection ratio $k/N$ & $\approx 5\%$ (from $k = \max(10, 0.05N)$) \\
+Fraction processed with reduced precision & $>95\%$ \\
+Observed H-bond recovery & $63.74\%$ (high) \\
+Observed hydrophobic recovery & $54.69\%$ (high) \\
+Observed Top-1 RMSD gain over Interformer & $+1.6$ percentage points (modest) \\
+Observed PB-valid gap & Visible (Supp. Fig. 6), consistent with limited global information \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Since the selection ratio is fixed in the current implementation, we provide here a theoretical analysis of its implications. The 5\% retention ratio implies that over 95\% of protein-ligand atom pairs are processed with reduced attention precision. While this strategy effectively focuses computational resources on regions with high importance scores, as reflected in the high interaction recovery rates for hydrogen bonds (63.74\%) and hydrophobic contacts (54.69\%), it also inherently limits the propagation of global structural information. This limitation is consistent with the observation that the Top-1 RMSD success rate (65.5\%) exceeds Interformer (63.9\%) by only 1.6 percentage points, a modest gain compared to the improvement in interaction recovery.
+
+\textbf{Supplementary Note 1: Relationship between sparse attention and PoseBusters PB-valid gap.}
+
+The atomic distance violations reported in Supplementary Figure 6 provide indirect evidence of the global information limitation. Specifically, the absence of long range constraints in the attention mechanism allows the model to produce poses that satisfy local interaction patterns but may violate steric boundaries between non adjacent atoms. A quantitative sensitivity analysis of the selection ratio, for example varying $k$ from 1\% to 20\% of $N$, would be required to establish a causal relationship. We leave this investigation for future work.
+
+\subsection{Analysis of Physical Plausibility and PoseBusters Results}
+
+\textbf{Supplementary Figure 6 (expanded caption):} The figure compares RMSD based success rates (dark bars) with PB-valid rates (light bars) for InterMoBA and baseline methods. The gap between the two bars indicates the fraction of poses that achieve RMSD $<$ 2\,\AA\ but violate at least one PoseBusters validity criterion. According to the PoseBusters report, the most frequent violation for deep learning based docking methods is atomic distance clashes between ligand and protein atoms. InterMoBA exhibits a similar pattern, suggesting that the MDN based energy function, which is trained to maximize the likelihood of observed interatomic distances without a penalty for van der Waals overlaps, does not inherently prevent steric clashes.
+
+\textbf{Supplementary Note 2: Causes and potential remedies for atomic distance violations.}
+
+\noindent \textit{Causes:}
+\begin{enumerate}
+    \item The training loss (Equation 11 in the main text) maximizes the conditional probability density of distances but does not include a repulsive term for distances below the sum of van der Waals radii.
+    \item The Monte Carlo sampling procedure (5000 steps) uses the negative log likelihood as the energy function; without a clash penalty, low energy poses may still contain penetrations.
+    \item The Top-K sparse attention reduces information exchange across distant atom pairs, which may weaken the model's ability to enforce global steric constraints.
+\end{enumerate}
+
+\noindent \textit{Potential remedies (not implemented in this work):}
+\begin{enumerate}
+    \item Augment the MDN loss with a steric clash penalty term:
+    $L_{\text{total}} = L_{\text{MDN}} + \lambda \sum_{i,j} \max(0, r_{\text{vdW}} - d_{ij})^2$.
+    \item Increase the Top-K selection ratio, for example to 10\% or 20\% of $N$, to improve global information flow at the cost of computational efficiency.
+    \item Apply post hoc energy minimization using a classical force field such as MMFF94 to resolve clashes while preserving the interaction pattern.
+\end{enumerate}
+
 
 \section{Supplementary Figures}
 
