@@ -2,7 +2,9 @@
 
 % --- Template packages ---
 \usepackage[utf8]{inputenc}
+\usepackage{cmap}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage{amsfonts}
@@ -136,11 +138,11 @@ Accurate prediction of protein-ligand binding modes and affinities is fundamenta
 \keywords{protein-ligand docking; affinity prediction; mixture of block attention; interaction recovery}
 
 \section{Introduction}
-Within drug discovery, predicting protein-ligand interactions is fundamental to pharmaceutical development. Experimental methods (X-ray, NMR) are precise but slow and costly for large-scale screening. Computational virtual screening \cite{dhakal2022artificial} has therefore gained traction, yet current predictive models face three persistent challenges \cite{wang2024prediction,harren2024modern}: Specifically, existing models struggle to explicitly model non-covalent interactions, insufficiently fuse long-range with local features, and suffer from prohibitive computational overhead (e.g., Interformer's 29.1s per sample).
+Within drug discovery, predicting protein-ligand interactions is fundamental to pharmaceutical development. Experimental methods such as X-ray crystallography and NMR are precise but slow and costly for large-scale screening. Computational virtual screening \cite{dhakal2022artificial} has therefore gained traction, yet current predictive models face three persistent challenges \cite{wang2024prediction,harren2024modern}: they struggle to explicitly model non-covalent interactions, insufficiently integrate long-range and local features, and often incur substantial computational overhead (e.g., Interformer's 29.1 s per sample).
 
 In practical drug discovery, binding pocket information is often available from homology models or co-crystallized ligands. Focusing on a predefined pocket drastically reduces the search space, increases docking success rates, improves biological relevance, reduces false positives, and facilitates the incorporation of physical constraints. Therefore, rather than tackling the more general but less tractable blind docking problem, we restrict our task to \textit{pocket-known docking} where the binding pocket residues are specified and benchmark against methods operating under the same condition.
 
-To address these limitations, we introduce InterMoBA, an interaction-aware Transformer with Mixture of Block Attention that unifies physical priors with computational efficiency in a hierarchical architecture: a base encoder processes atomic coordinates and chemical features; an interaction encoder applies masked self-attention \cite{lee2018pre} to disentangle intra- and inter-molecular forces; and the MoBA adapter injects chunk-based processing with a Top-K sparse attention gate \cite{lu2025moba} that dynamically focuses on key atomic regions. Atomic collision detection and minimum-distance constraints are embedded as physical rules. Training leverages dynamic batching and mixed-precision arithmetic \cite{micikevicius2017mixed} for efficiency.
+To address these limitations, we introduce InterMoBA, an interaction-aware Transformer with Mixture of Block Attention that unifies physical priors with computational efficiency in a hierarchical architecture. A base encoder processes atomic coordinates and chemical features, an interaction encoder applies masked self-attention \cite{lee2018pre} to disentangle intra- and inter-molecular forces, and the MoBA adapter uses chunk-based processing with a Top-K sparse attention gate \cite{lu2025moba} to focus computation on key atomic regions. Atomic collision detection and minimum-distance constraints are embedded as physical rules. Training leverages dynamic batching and mixed-precision arithmetic \cite{micikevicius2017mixed} for efficiency.
 
 On the time-split PDBBind test set, InterMoBA achieves a Top-1 docking success rate (RMSD $< 2$ \AA) of 65.5\% (vs. Interformer's 63.9\%) while reducing the per-sample runtime to 23.1 seconds (vs. 29.1s) \cite{lai2024interformer}. The recovery rates for hydrogen bonds (63.74\%) and hydrophobic interactions (54.69\%) exceed those of the best prior model by over 13 percentage points \cite{jain2024deep}, confirming precise capture of the underlying physical interaction mechanisms.
 
@@ -159,13 +161,13 @@ where $Q,K,V$ are linear projections of $X$ and $Z(E) \in \mathbb{R}^{n \times n
 
 \subsection{InterMoBA Architecture}
 \subsubsection{InterMoBA Model Overview}
-InterMoBA is a deep learning framework for protein-ligand docking and binding affinity prediction that emphasizes energy-based evaluation. It draws inspiration from Graph-Transformer \cite{vaswani2017attention,yun2019graph} models and incorporates the MoBA \cite{lu2025moba} module, which directly predicts binding energies as the final affinity score. The model takes as input 3D conformations of individual ligands and pre-defined protein binding pockets (Figure~\ref{fig:wide-figure_a}). In this work, the pocket is specified by selecting all protein residues within 7~\AA\ of a reference ligand a standard practice in pocket-aware docking. Both ligand and pocket are represented as graphs \cite{stark2022equibind}, where each node corresponds to an atom characterized by its pharmacophoric type and each edge denotes spatial proximity, with the edge feature being the Euclidean distance between atom pairs.
+InterMoBA is a deep learning framework for protein-ligand docking and binding affinity prediction that emphasizes energy-based evaluation. It draws inspiration from Graph-Transformer \cite{vaswani2017attention,yun2019graph} models and incorporates the MoBA \cite{lu2025moba} module, which directly predicts binding energies as the final affinity score. The model takes as input 3D conformations of individual ligands and pre-defined protein binding pockets (Figure~\ref{fig:wide-figure_a}). In this work, the pocket is specified by selecting all protein residues within 7~\AA\ of a reference ligand, a standard practice in pocket-aware docking. Both ligand and pocket are represented as graphs \cite{stark2022equibind}, where each node corresponds to an atom characterized by its pharmacophoric type and each edge denotes spatial proximity, with the edge feature being the Euclidean distance between atom pairs.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/fig1a.png}
+    \includegraphics[width=0.7\textwidth]{figures/fig1a_nature.png}
     \caption{\small
-    \textbf{Comparison of non-covalent interactions in docking pose with existing and proposed methods.} The binding pocket (green) and ligand (blue) are illustrated in the main panel, while the inset provides an enlarged view of the ligand's conformational fit within the pocket.  
+    \textbf{Protein binding-pocket and ligand-pose overview used by InterMoBA.} The binding pocket and ligand are illustrated in the main panel, while the inset provides an enlarged view of the ligand's conformational fit within the pocket.
 }
     \label{fig:wide-figure_a}
 \end{figure}
@@ -174,7 +176,7 @@ The node and edge features of protein and ligand are processed by Intra-Blocks a
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/fig1bc.png}
+    \includegraphics[width=0.7\textwidth]{figures/fig1bc_nature.png}
     \caption{\small
     \textbf{Overview of InterMoBA architecture.}
     \textbf{a} Binding pockets and ligands are extracted from structures, encoded into SDF/UFF descriptors, collated by a Data Collator, embedded, and passed through Multi-Head Attention and a linear layer \cite{ba2016layer} to yield final feature representations.  
@@ -234,7 +236,7 @@ Node and edge features are normalized via LayerNorm, fused with backbone feature
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/fig4abc.png}
+    \includegraphics[width=0.7\textwidth]{figures/fig4abc_nature.png}
     \caption{%
         \textbf{Visual analysis of MoBA's impact on node-feature distribution and clustering.} \\
         \textbf{a} The histogram shows that feature values are widely dispersed before MoBA, but become concentrated around zero after MoBA, indicating effective normalization.
@@ -283,14 +285,14 @@ As summarized in Table~\ref{tab:model_comparison}, under the blind docking scena
 \renewcommand{\arraystretch}{1.1}
 \setlength{\arrayrulewidth}{0.3pt}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccccc}
 \toprule
-\multirow{2}{*}{\textbf{Models}} & 
-\multicolumn{2}{c}{\textbf{Top-1 RMSD}} & 
-\multicolumn{2}{c}{\textbf{Top-5 RMSD}} & 
-\multirow{2}{*}{\textbf{Runtime (s)\textsuperscript{↓}}} \\
+\multirow{2}{*}{\textbf{Models}} &
+\multicolumn{2}{c}{\textbf{Top-1 RMSD}} &
+\multicolumn{2}{c}{\textbf{Top-5 RMSD}} &
+\multirow{2}{*}{\textbf{Runtime (s) $\downarrow$}} \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5}
-& \textbf{\% $<$ 2~\AA\textsuperscript{↑}} & \textbf{Median\textsuperscript{↓}} & \textbf{\% $<$ 2~\AA\textsuperscript{↑}} & \textbf{Median\textsuperscript{↓}} & \\
+& \textbf{\% $<$ 2~\AA\ $\uparrow$} & \textbf{Median $\downarrow$} & \textbf{\% $<$ 2~\AA\ $\uparrow$} & \textbf{Median $\downarrow$} & \\
 \specialrule{0.3pt}{0pt}{0pt}
 \multicolumn{6}{c}{\textbf{Blind docking}} \\
 \specialrule{0.3pt}{0pt}{0pt}
@@ -324,11 +326,11 @@ Interformer\cite{lai2024interformer} & 63.9 & \textbf{1.25} & 78.0 & 1.02 & 29.1
 \end{table}
 
 \subsection{Quantitative Analysis of Molecular Interaction Recovery Capability}
-Conventional docking methods that minimize RMSD often overlook the underlying physical non-covalent interactions. We therefore systematically evaluated the recovery of hydrogen bonds and hydrophobic interactions using PLIP \cite{salentin2015plip} on the time-split PDBBind \cite{wang2005pdbbind} test set, comparing DiffDock \cite{corso2022diffdock}, DeepDock \cite{liao2019deepdock}, Interformer \cite{lai2024interformer}, and InterMoBA. Baselines like DiffDock and DeepDock show limited interaction recovery (e.g., H-bond: ~30\% and ~21\%; Fig.~\ref{fig:performance_abcd}(a-b)). Interformer improves the average recovery rates to 50.22\% (hydrogen bond) and 38.51\% (hydrophobic). InterMoBA attains 63.74\% and 54.69\%, respectively, significantly outperforming all baselines and demonstrating superior generalizability and accuracy in molecular recognition \cite{buttenschoen2024posebusters}. Case studies (Fig.~\ref{fig:performance_ef}(e-f)) further validate these results, showing near-crystallographic poses (e.g., RMSD=0.492Å for 6ggb) with correct hydrophobic and hydrogen-bond patterns.
+Conventional docking methods that minimize RMSD often overlook the underlying physical non-covalent interactions. We therefore systematically evaluated the recovery of hydrogen bonds and hydrophobic interactions using PLIP \cite{salentin2015plip} on the time-split PDBBind \cite{wang2005pdbbind} test set, comparing DiffDock \cite{corso2022diffdock}, DeepDock \cite{liao2019deepdock}, Interformer \cite{lai2024interformer}, and InterMoBA. DiffDock and DeepDock show limited interaction recovery (e.g., H-bond recovery of approximately 30\% and 21\%; Fig.~\ref{fig:performance_abcd}a,b). Interformer improves the average recovery rates to 50.22\% for hydrogen bonds and 38.51\% for hydrophobic contacts. InterMoBA attains 63.74\% and 54.69\%, respectively, outperforming all baselines and demonstrating improved molecular-recognition fidelity \cite{buttenschoen2024posebusters}. Case studies (Fig.~\ref{fig:performance_ef}a,b) further validate these results, showing near-crystallographic poses (e.g., RMSD = 0.492~\AA\ for 6ggb) with correct hydrophobic and hydrogen-bond patterns.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/fig2abcd.jpg}
+    \includegraphics[width=0.7\textwidth]{figures/fig2abcd_nature.png}
     \caption{
     \textbf{Performance evaluation of InterMoBA in molecular-interaction recovery and conformation ranking.}
     \textbf{(a,b)} Interaction recovery rates for hydrogen bonds and hydrophobic contacts. 
@@ -353,7 +355,7 @@ InterMoBA's conformation ranking score is highly indicative of spatial accuracy:
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{figures/fig2ef.jpg}
+    \includegraphics[width=0.7\textwidth]{figures/fig2ef_nature.png}
     \caption{
         \textbf{Visualization of binding modes and interaction details for representative complexes.}
         \textbf{a} Predicted ligand pose (PDB ID: 6ggb) overlaid with the crystallographic pose, with hydrophobic contacts highlighted. Inset shows the spatial fit within the binding pocket (RMSD = 0.492 \AA).
@@ -376,9 +378,9 @@ The core strength of InterMoBA lies in its deep modeling of intermolecular physi
 
 The improvement in RMSD is more limited than recovery gains because the Top-K mechanism imposes weaker global constraints and sparse attention limits information flow in non-critical regions, which future work will address. The training loss primarily optimizes local energy terms, distances, and key-point matching without explicit global-spatial-consistency constraints, biasing the model toward ``key points'' rather than ``overall shape.'' Sparse global attention also reduces information propagation in non-critical regions \cite{peng2024limitations}, particularly for large molecules or complex binding modes, further limiting RMSD optimization.
 
-To quantitatively assess the impact of the sparse attention mechanism on global structural accuracy, we examined the relationship between the Top-K selection ratio and the observed discrepancy between RMSD success and PoseBusters validity (Supplementary Figure 6 and Supplementary Note 1). The key findings are summarized in Supplementary Table S2 and discussed in detail in the supplementary material. In our implementation, the Top-K selection retains approximately 5\% of all nodes for full precision attention. This ratio, while sufficient for recovering local interaction patterns such as hydrogen bonds and hydrophobic contacts, limits long range information propagation that is necessary for precise global alignment. This trade off explains why the improvement in Top-1 RMSD success over Interformer is modest (+1.6 percentage points) relative to the substantial gains in interaction recovery.
+To quantitatively assess the impact of the sparse attention mechanism on global structural accuracy, we examined the relationship between the Top-K selection ratio and the observed discrepancy between RMSD success and PoseBusters validity (Supplementary Figure 6 and Supplementary Note 1). The key findings are summarized in Supplementary Table S2 and discussed in detail in the supplementary material. In our implementation, the Top-K selection retains approximately 5\% of all nodes for full-precision attention. This ratio, while sufficient for recovering local interaction patterns such as hydrogen bonds and hydrophobic contacts, limits long-range information propagation that is necessary for precise global alignment. This trade-off explains why the improvement in Top-1 RMSD success over Interformer is modest (+1.6 percentage points) relative to the substantial gains in interaction recovery.
 
-Another limitation concerns the physical plausibility of the predicted poses. As shown in Supplementary Figure 6, the fraction of poses that pass all PoseBusters validity checks (PB-valid) is lower than the Top-1 RMSD success rate, primarily due to atomic distance violations. This behavior is not unique to InterMoBA; it has been documented as a common issue for deep learning based docking methods that lack explicit steric repulsion terms in their training objectives \cite{buttenschoen2024posebusters}. In our framework, the MDN based energy function prioritizes the recovery of specific non covalent interactions, as evidenced by the high hydrogen bond and hydrophobic contact rates, over enforcing strict interatomic distance constraints. We discuss the underlying causes and potential remedies in Supplementary Note 2.
+Another limitation concerns the physical plausibility of the predicted poses. As shown in Supplementary Figure 6, the fraction of poses that pass all PoseBusters validity checks (PB-valid) is lower than the Top-1 RMSD success rate, primarily due to atomic distance violations. This behavior is not unique to InterMoBA; it has been documented as a common issue for deep-learning-based docking methods that lack explicit steric repulsion terms in their training objectives \cite{buttenschoen2024posebusters}. In our framework, the MDN-based energy function prioritizes the recovery of specific non-covalent interactions, as evidenced by the high hydrogen-bond and hydrophobic-contact rates, over enforcing strict interatomic distance constraints. We discuss the underlying causes and potential remedies in Supplementary Note 2.
 
 A current limitation of InterMoBA is its dependency on a predefined binding pocket. While this is appropriate for many drug discovery scenarios where the active site is known, the model cannot be directly applied to blind docking. In future work, we plan to integrate state-of-the-art pocket prediction methods to extend InterMoBA to fully blind settings without compromising its physical interaction modeling. Future work will focus on explicit global-spatial-consistency constraints and richer information propagation for non-critical regions, with extensions to protein-protein and protein-nucleic acid interactions, and integration of multi-modal biological information to enrich feature representations \cite{wu2024leveraging}.
 
